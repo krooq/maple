@@ -1,0 +1,15 @@
+[package]
+name = "maple"
+version = "0.1.0"
+authors = ["Gavin Rossiter <rossiter.gavin@gmail.com>"]
+edition = "2018"
+license = "MPL-2.0"
+description = "Simple cross platform renderer and ui toolkit."
+repository = "https://github.com/krooq/maple"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = "0.22"
+iced_wgpu = "0.2.2"
+iced_native = "0.2.2"
