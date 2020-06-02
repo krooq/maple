@@ -8,6 +8,12 @@
 		},
 		{
 			"path": "..\\iced\\native"
+		},
+		{
+			"path": "..\\iced\\web"
+		},
+		{
+			"path": "..\\maple-web"
 		}
 	],
 	"settings": {}
