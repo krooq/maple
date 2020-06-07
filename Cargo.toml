@@ -9,20 +9,28 @@ repository = "https://github.com/krooq/maple"
 
 [lib]
 name = "maple"
-crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+rgx = { path = "../rgx", features = ["renderer"]}
 wgpu = { path = "../wgpu-rs" }
-winit = { version = "0.22.2", features = ["web-sys"] }
-futures = "0.3"
+winit = { version = "0.22.2" }
+futures = "0.3.5"
+log = "0.4.8"
+env_logger = "0.7.1"
+cgmath = "0.17.0"
+bytemuck = "1.2.0"
+raw-window-handle = "0.3.3"
+anyhow = "1.0.31"
+glam = "0.8.7"
+zerocopy = "0.3.0"
 # iced_wgpu = { path = "../iced/wgpu" }
 # iced_native = { path = "../iced/native" }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.7"
+# [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures = "0.4.12"
-console_error_panic_hook = "0.1.6"
-console_log = "0.1.2"
-web-sys = "0.3.40"
+
+# [target.'cfg(target_arch = "wasm32")'.dependencies]
+# wasm-bindgen-futures = "0.4.12"
+# console_error_panic_hook = "0.1.6"
+# console_log = "0.1.2"
+# web-sys = "0.3.40"
