@@ -1,13 +1,13 @@
+use crate::pipeline::Pipeline;
 use winit::{dpi::PhysicalSize, window::Window};
+
 pub struct GPU {
-    instance: wgpu::Instance,
-    size: PhysicalSize<u32>,
     surface: wgpu::Surface,
-    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
     swap_chain_descriptor: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
+    pipeline: Pipeline,
 }
 
 impl GPU {
@@ -46,17 +46,17 @@ impl GPU {
             height: size.height,
             present_mode: wgpu::PresentMode::Mailbox,
         };
+
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+        let pipeline = Pipeline::new(&device, swap_chain_descriptor.format);
 
         GPU {
-            instance,
-            size,
             surface,
-            adapter,
             device,
             queue,
             swap_chain_descriptor,
             swap_chain,
+            pipeline,
         }
     }
 
@@ -69,8 +69,8 @@ impl GPU {
         self.swap_chain_descriptor.height = size.height;
     }
 
-    pub fn render(&mut self) -> wgpu::SwapChainFrame {
-        match self.swap_chain.get_next_frame() {
+    pub fn render(&mut self) {
+        let frame = match self.swap_chain.get_next_frame() {
             Ok(frame) => frame,
             Err(_) => {
                 self.swap_chain = self
@@ -80,6 +80,24 @@ impl GPU {
                     .get_next_frame()
                     .expect("Failed to acquire next swap chain texture!")
             }
-        }
+        };
+        let command_buffer = self.pipeline.render(&self.device, &frame);
+        self.submit(Some(command_buffer));
     }
+}
+
+pub fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
+    let spv = &wgpu::read_spirv(std::io::Cursor::new(
+        &include_bytes!("shader/shader.vert.spv")[..],
+    ))
+    .expect("Read shader as SPIR-V");
+    device.create_shader_module(&spv)
+}
+
+pub fn create_fragment_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
+    let spv = &wgpu::read_spirv(std::io::Cursor::new(
+        &include_bytes!("shader/shader.frag.spv")[..],
+    ))
+    .expect("Read shader as SPIR-V");
+    device.create_shader_module(&spv)
 }

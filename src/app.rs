@@ -1,9 +1,7 @@
 use crate::gpu;
-use log::{info, warn};
-use raw_window_handle::HasRawWindowHandle;
+use log::info;
 use std::time;
 use winit::{
-    dpi::PhysicalSize,
     event::{self, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -51,11 +49,11 @@ async fn run_async<A: App>(event_loop: EventLoop<()>, window: Window) {
     info!("Initializing the gpu...");
     let mut gpu = gpu::GPU::new(&window).await;
 
-    log::info!("Initializing the app...");
-    let (mut app, init_command_buf) = A::init(&gpu.swap_chain_descriptor, &gpu.device, &gpu.queue);
-    if init_command_buf.is_some() {
-        gpu.submit(init_command_buf);
-    }
+    // log::info!("Initializing the app...");
+    // let (mut app, init_command_buf) = A::init(&gpu.swap_chain_descriptor, &gpu.device, &gpu.queue);
+    // if init_command_buf.is_some() {
+    //     gpu.submit(init_command_buf);
+    // }
 
     let mut last_update_inst = time::Instant::now();
 
@@ -81,7 +79,7 @@ async fn run_async<A: App>(event_loop: EventLoop<()>, window: Window) {
                 WindowEvent::Resized(size) => {
                     log::info!("Resizing to {:?}", size);
                     gpu.resize(size);
-                    app.resize(&gpu.swap_chain_descriptor, &gpu.device, &gpu.queue);
+                    // app.resize(&gpu.swap_chain_descriptor, &gpu.device, &gpu.queue);
                 }
                 WindowEvent::KeyboardInput {
                     input:
@@ -96,13 +94,11 @@ async fn run_async<A: App>(event_loop: EventLoop<()>, window: Window) {
                     *control_flow = ControlFlow::Exit;
                 }
                 _ => {
-                    app.update(event);
+                    // app.update(event);
                 }
             },
             Event::RedrawRequested(_) => {
-                let frame = gpu.render();
-                let command_buffer = app.render(&frame.output, &gpu.device, &gpu.queue);
-                gpu.submit(Some(command_buffer));
+                gpu.render();
             }
             _ => {}
         }

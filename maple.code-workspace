@@ -7,10 +7,10 @@
 			"path": "..\\iced"
 		},
 		{
-			"path": "..\\rgx"
+			"path": "..\\wgpu-rs"
 		},
 		{
-			"path": "..\\wgpu-rs"
+			"path": "..\\learn-wgpu"
 		},
 	],
 	"settings": {}

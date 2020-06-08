@@ -1,23 +1,23 @@
-# What Maple is?
+## What is Maple?
 
 Maple as a project aims to achieve 3 primary goals:
 1. Provide simple "cross platform" *rendering* capabilites
 2. Provide a simple *UI toolkit* for trivial UI use cases
 3. Provide a simple *UI design app* for trivial UI use cases
 
-# What Maple is **not**?
+## What Maple is **not**?
 
 The following are **not** in the scope of Maple:
 - Complex UI widgets
 - Text shaping i.e. left to right, one-to-one, monospaced fonts only
 - Complex layouting, simple grid layouts only
 
-# Roadmap
+## Roadmap
 - Renderer
 - Basic UI toolkit
 - UI design app
 
-# Principles
+## Principles
 The design of Maple is driven by high level principles rather than rules or conventions.
 
 These principles are:
@@ -32,9 +32,6 @@ From the above principles Maple derives the following ethos:
 - Doesn't get in your way
 - Interoperable
 - Extensible
-
-
-# Fine print
 
 ## License
 Licensed under either of

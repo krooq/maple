@@ -3,7 +3,9 @@ pub mod app;
 pub mod camera;
 pub mod camera_controller;
 pub mod gpu;
+pub mod pipeline;
+// pub mod transformation;
 pub mod wgpu_cube_example;
 
-pub mod iced;
-pub mod iced_triangle;
+// pub mod iced;
+// pub mod iced_triangle;
