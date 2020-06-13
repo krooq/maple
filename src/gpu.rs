@@ -2,6 +2,24 @@ use crate::pipeline::Pipeline;
 use winit::{dpi::PhysicalSize, window::Window};
 
 pub struct GPU {
+    instance: wgpu::Instance,
+    render_contexts: Vec<RenderContext>,
+}
+
+impl GPU {
+    fn new() -> Self {
+        Self {
+            instance: wgpu::Instance::new(),
+            render_contexts: Vec::new(),
+        }
+    }
+
+    async fn create_render_context(&mut self, window: &winit::window::Window) {
+        self.channels.push(RenderContext::new(window).await);
+    }
+}
+
+pub struct RenderContext {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -10,16 +28,19 @@ pub struct GPU {
     pipeline: Pipeline,
 }
 
-impl GPU {
-    pub async fn new(window: &Window) -> GPU {
+impl RenderContext {
+    pub async fn new(window: &winit::window::Window) -> Self {
         let instance = wgpu::Instance::new();
-        let size = window.inner_size();
         let surface = unsafe { instance.create_surface(window) };
+        let size = window.inner_size();
         let adapter = instance
             .request_adapter(
                 &wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::Default,
                     compatible_surface: Some(&surface),
+                },
+                wgpu::UnsafeExtensions {
+                    allow_unsafe: false,
                 },
                 wgpu::BackendBit::PRIMARY,
             )
@@ -32,6 +53,7 @@ impl GPU {
                 &wgpu::DeviceDescriptor {
                     extensions: wgpu::Extensions::empty(),
                     limits: wgpu::Limits::default(),
+                    shader_validation: true,
                 },
                 trace_dir.ok().as_ref().map(std::path::Path::new),
             )
@@ -50,7 +72,7 @@ impl GPU {
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
         let pipeline = Pipeline::new(&device, swap_chain_descriptor.format);
 
-        GPU {
+        Self {
             surface,
             device,
             queue,
@@ -64,7 +86,7 @@ impl GPU {
         self.queue.submit(command_buffers);
     }
 
-    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+    pub fn resize(&mut self, size: &PhysicalSize<u32>) {
         self.swap_chain_descriptor.width = size.width;
         self.swap_chain_descriptor.height = size.height;
     }

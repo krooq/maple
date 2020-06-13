@@ -11,20 +11,25 @@ repository = "https://github.com/krooq/maple"
 name = "maple"
 
 [dependencies]
+# graphics
 wgpu = { path = "../wgpu-rs" }
-
+image = "0.23.5"
+# windows
 winit = { version = "0.22.2" }
 raw-window-handle = "0.3.3"
-
+# concurency
 futures = "0.3.5"
-
+# errors
 log = "0.4.8"
 env_logger = "0.7.1"
 anyhow = "1.0.31"
-
+thiserror = "1.0.19"
+# math
 cgmath = "0.17.0"
 glam = "0.8.7"
-
+mint = "0.5.5"
+ultraviolet = "0.4.6"
+# data
 zerocopy = "0.3.0"
 bytemuck = "1.2.0"
 
