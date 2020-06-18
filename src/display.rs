@@ -1,25 +1,12 @@
 use crate::pipeline::Pipeline;
-use winit::{dpi::PhysicalSize, window::Window};
-
-pub struct GPU {
-    instance: wgpu::Instance,
-    render_contexts: Vec<RenderContext>,
-}
-
-impl GPU {
-    fn new() -> Self {
-        Self {
-            instance: wgpu::Instance::new(),
-            render_contexts: Vec::new(),
-        }
-    }
-
-    async fn create_render_context(&mut self, window: &winit::window::Window) {
-        self.channels.push(RenderContext::new(window).await);
-    }
-}
-
-pub struct RenderContext {
+use winit::dpi::PhysicalSize;
+use winit::{
+    event::{self, WindowEvent},
+    event_loop::ControlFlow,
+};
+/// [`Display`]: ./struct.Display.html
+pub struct Display {
+    window: winit::window::Window,
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -28,10 +15,17 @@ pub struct RenderContext {
     pipeline: Pipeline,
 }
 
-impl RenderContext {
-    pub async fn new(window: &winit::window::Window) -> Self {
-        let instance = wgpu::Instance::new();
-        let surface = unsafe { instance.create_surface(window) };
+impl Display {
+    pub async fn new<T: Into<String>>(
+        event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
+        instance: &wgpu::Instance,
+        title: T,
+    ) -> Self {
+        let window = winit::window::WindowBuilder::new()
+            .with_title(title)
+            .build(&event_loop)
+            .unwrap();
+        let surface = unsafe { instance.create_surface(&window) };
         let size = window.inner_size();
         let adapter = instance
             .request_adapter(
@@ -39,9 +33,7 @@ impl RenderContext {
                     power_preference: wgpu::PowerPreference::Default,
                     compatible_surface: Some(&surface),
                 },
-                wgpu::UnsafeExtensions {
-                    allow_unsafe: false,
-                },
+                wgpu::UnsafeExtensions::disallow(),
                 wgpu::BackendBit::PRIMARY,
             )
             .await
@@ -62,7 +54,6 @@ impl RenderContext {
 
         let swap_chain_descriptor = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            // TODO: Allow srgb unconditionally
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
@@ -73,6 +64,7 @@ impl RenderContext {
         let pipeline = Pipeline::new(&device, swap_chain_descriptor.format);
 
         Self {
+            window,
             surface,
             device,
             queue,
@@ -87,11 +79,12 @@ impl RenderContext {
     }
 
     pub fn resize(&mut self, size: &PhysicalSize<u32>) {
+        log::info!("Resizing to {:?}", size);
         self.swap_chain_descriptor.width = size.width;
         self.swap_chain_descriptor.height = size.height;
     }
 
-    pub fn render(&mut self) {
+    pub fn draw(&mut self) {
         let frame = match self.swap_chain.get_next_frame() {
             Ok(frame) => frame,
             Err(_) => {
@@ -106,20 +99,28 @@ impl RenderContext {
         let command_buffer = self.pipeline.render(&self.device, &frame);
         self.submit(Some(command_buffer));
     }
-}
 
-pub fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
-    let spv = &wgpu::read_spirv(std::io::Cursor::new(
-        &include_bytes!("shader/shader.vert.spv")[..],
-    ))
-    .expect("Read shader as SPIR-V");
-    device.create_shader_module(&spv)
-}
+    pub fn request_redraw(&self) {
+        self.window.request_redraw();
+    }
 
-pub fn create_fragment_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
-    let spv = &wgpu::read_spirv(std::io::Cursor::new(
-        &include_bytes!("shader/shader.frag.spv")[..],
-    ))
-    .expect("Read shader as SPIR-V");
-    device.create_shader_module(&spv)
+    pub fn send_event(&mut self, event: &WindowEvent, control_flow: &mut ControlFlow) {
+        match event {
+            WindowEvent::Resized(size) => {
+                self.resize(&size);
+            }
+            WindowEvent::KeyboardInput {
+                input:
+                    event::KeyboardInput {
+                        virtual_keycode: Some(event::VirtualKeyCode::Escape),
+                        state: event::ElementState::Pressed,
+                        ..
+                    },
+                ..
+            }
+            // TODO: change the way events work
+            | WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+            _ => {}
+        }
+    }
 }

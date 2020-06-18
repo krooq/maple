@@ -17,8 +17,8 @@ image = "0.23.5"
 # windows
 winit = { version = "0.22.2" }
 raw-window-handle = "0.3.3"
-# concurency
-futures = "0.3.5"
+# concurrency
+futures = "0.3"
 # errors
 log = "0.4.8"
 env_logger = "0.7.1"

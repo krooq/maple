@@ -38,3 +38,18 @@ ORDER OF CALLING RenderPass::set_* statements (and draw) is important, do it in 
 - set_vertex_buffer
 - set_index_buffer
 - draw_indexed
+
+
+# App stack
+- Executor      (Concurrency)
+- Data          (State) 
+- Event         (Changes to State, arguably part of State)
+- Display       (Graphics)
+- Serializer    (Persistent State and external communications)
+
+GUI Applications need to: 
+- Operate concurrently      (Threads, Execution model, async/await, Dispatch)
+- Mutate & Read state       (Data model, ECS, Buffers, Structs)
+- Persist state             (Serialization, Parsing, Files, Databases)
+- Present info              (Graphics, Text, Sounds, Animations, Videos)
+- Accept info               (Text, Microphone, Video, Images)

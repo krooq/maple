@@ -66,20 +66,7 @@ impl Texture {
         let cmd_buffer = encoder.finish();
 
         let view = texture.create_default_view();
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: None,
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            lod_min_clamp: -100.0,
-            lod_max_clamp: 100.0,
-            compare: Some(wgpu::CompareFunction::Always),
-            anisotropy_clamp: None,
-            ..Default::default()
-        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor::default());
 
         Ok((
             Self {

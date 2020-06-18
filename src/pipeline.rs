@@ -1,4 +1,3 @@
-use crate::gpu;
 use std::mem;
 
 #[repr(C)]
@@ -64,11 +63,11 @@ impl Pipeline {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &gpu::create_vertex_shader(&device),
+                module: &create_vertex_shader(&device),
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &gpu::create_fragment_shader(&device),
+                module: &create_fragment_shader(&device),
                 entry_point: "main",
             }),
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
@@ -145,4 +144,20 @@ impl Pipeline {
 
         encoder.finish()
     }
+}
+
+fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
+    let spv = &wgpu::read_spirv(std::io::Cursor::new(
+        &include_bytes!("shader/shader.vert.spv")[..],
+    ))
+    .expect("Read shader as SPIR-V");
+    device.create_shader_module(&spv)
+}
+
+fn create_fragment_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
+    let spv = &wgpu::read_spirv(std::io::Cursor::new(
+        &include_bytes!("shader/shader.frag.spv")[..],
+    ))
+    .expect("Read shader as SPIR-V");
+    device.create_shader_module(&spv)
 }

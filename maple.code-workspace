@@ -6,12 +6,12 @@
 		{
 			"path": "..\\iced"
 		},
-		{
-			"path": "..\\wgpu-rs"
-		},
-		{
-			"path": "..\\learn-wgpu"
-		},
+		// {
+		// 	"path": "..\\wgpu-rs"
+		// },
+		// {
+		// 	"path": "..\\learn-wgpu"
+		// },
 	],
 	"settings": {}
 }
