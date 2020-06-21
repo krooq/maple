@@ -3,15 +3,14 @@
 		{
 			"path": "."
 		},
-		{
-			"path": "..\\iced"
-		},
+		// {
+		// 	"path": "..\\iced"
+		// },
 		// {
 		// 	"path": "..\\wgpu-rs"
 		// },
 		// {
 		// 	"path": "..\\learn-wgpu"
 		// },
-	],
-	"settings": {}
+	]
 }

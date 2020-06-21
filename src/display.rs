@@ -4,7 +4,7 @@ use winit::{
     event::{self, WindowEvent},
     event_loop::ControlFlow,
 };
-/// [`Display`]: ./struct.Display.html
+
 pub struct Display {
     window: winit::window::Window,
     surface: wgpu::Surface,
@@ -39,7 +39,6 @@ impl Display {
             .await
             .unwrap();
 
-        let trace_dir = std::env::var("WGPU_TRACE");
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -47,7 +46,7 @@ impl Display {
                     limits: wgpu::Limits::default(),
                     shader_validation: true,
                 },
-                trace_dir.ok().as_ref().map(std::path::Path::new),
+                std::env::var("WGPU_TRACE").ok().as_ref().map(std::path::Path::new),
             )
             .await
             .unwrap();

@@ -47,6 +47,30 @@ const INDICES: &[u16] = &[
     2, 3, 4,
 ];
 
+struct Instance {
+    position: cgmath::Vector3<f32>,
+    rotation: cgmath::Quaternion<f32>,
+}
+
+impl Instance {
+    // This is changed from `to_matrix()`
+    fn to_raw(&self) -> InstanceRaw {
+        InstanceRaw {
+            model: cgmath::Matrix4::from_translation(self.position)
+                * cgmath::Matrix4::from(self.rotation),
+        }
+    }
+}
+
+// NEW!
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct InstanceRaw {
+    model: cgmath::Matrix4<f32>,
+}
+
+unsafe impl bytemuck::Pod for InstanceRaw {}
+unsafe impl bytemuck::Zeroable for InstanceRaw {}
 pub(crate) struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
@@ -54,6 +78,7 @@ pub(crate) struct Pipeline {
     num_indices: u32,
 }
 
+/// A [`Pipeline`] is a recipe for rendering shapes.
 impl Pipeline {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Pipeline {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
