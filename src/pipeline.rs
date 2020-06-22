@@ -67,6 +67,16 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
 impl Pipeline {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Pipeline {
         use cgmath::prelude::*;
+        let instances: Vec<Instance> = Vec::new();
+        for x in 0..10 {
+            for y in 0..10 {
+                instances.push(Instance {
+                    position: cgmath::Vector3::new(x as f32 / 10.0, y as f32 / 10.0, 0.0),
+                    rotation: cgmath::Quaternion::zero(),
+                });
+            }
+        }
+
         let instances: Vec<Instance> = (0..NUM_INSTANCES_PER_ROW)
             .flat_map(|z| {
                 (0..NUM_INSTANCES_PER_ROW).map(move |x| {
