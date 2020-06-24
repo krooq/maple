@@ -72,7 +72,9 @@ impl Display {
         };
 
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
-        let pipeline = Pipeline::new(&device, swap_chain_descriptor.format);
+        let (pipeline, initial_commands) = Pipeline::new(&device, swap_chain_descriptor.format);
+
+        queue.submit(vec![initial_commands]);
 
         Self {
             window,

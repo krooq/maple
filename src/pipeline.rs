@@ -38,11 +38,11 @@ use crate::vertex::Vertex;
 
 #[rustfmt::skip]
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.0,0.0]}, // A
-    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0,0.0] }, // B
-    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.0,0.0] }, // C
-    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.0,0.0] }, // D
-    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.0,0.0] }, // E
+    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
+    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
+    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
+    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
+    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], },
 ];
 
 #[rustfmt::skip]
@@ -54,7 +54,7 @@ const INDICES: &[u16] = &[
 
 pub(crate) struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
-    uniform_bind_group: wgpu::BindGroup,
+    // uniform_bind_group: wgpu::BindGroup,
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: Texture,
     vertex_buffer: wgpu::Buffer,
@@ -64,32 +64,35 @@ pub(crate) struct Pipeline {
 
 /// A [`Pipeline`] is a recipe for rendering shapes.
 impl Pipeline {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Pipeline {
-        use cgmath::prelude::*;
-        let mut instances = Vec::<Instance>::new();
-        for x in 0..10 {
-            for y in 0..10 {
-                instances.push(Instance {
-                    position: cgmath::Vector3::new(x as f32 / 10.0, y as f32 / 10.0, 0.0),
-                    rotation: cgmath::Quaternion::zero(),
-                });
-            }
-        }
+    pub fn new(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+    ) -> (Pipeline, wgpu::CommandBuffer) {
+        // use cgmath::prelude::*;
+        // let mut instances = Vec::<Instance>::new();
+        // for x in 0..10 {
+        //     for y in 0..10 {
+        //         instances.push(Instance {
+        //             position: cgmath::Vector3::new(x as f32 / 10.0, y as f32 / 10.0, 0.0),
+        //             rotation: cgmath::Quaternion::zero(),
+        //         });
+        //     }
+        // }
 
         let vertex_buffer = device
             .create_buffer_with_data(bytemuck::cast_slice(VERTICES), wgpu::BufferUsage::VERTEX);
         let index_buffer =
             device.create_buffer_with_data(bytemuck::cast_slice(INDICES), wgpu::BufferUsage::INDEX);
 
-        let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        // let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
 
-        let instance_buffer_size =
-            instance_data.len() * std::mem::size_of::<cgmath::Matrix4<f32>>();
+        // let instance_buffer_size =
+        //     instance_data.len() * std::mem::size_of::<cgmath::Matrix4<f32>>();
 
-        let instance_buffer = device.create_buffer_with_data(
-            bytemuck::cast_slice(&instance_data),
-            wgpu::BufferUsage::STORAGE,
-        );
+        // let instance_buffer = device.create_buffer_with_data(
+        //     bytemuck::cast_slice(&instance_data),
+        //     wgpu::BufferUsage::STORAGE,
+        // );
 
         // Texture
         let diffuse_bytes = include_bytes!("images/happy-tree.png");
@@ -132,53 +135,71 @@ impl Pipeline {
         });
 
         // Camera
-        let camera = Camera {
-            // position the camera one unit up and 2 units back
-            eye: (0.0, 1.0, -2.0).into(),
-            // have it look at the origin
-            target: (0.0, 0.0, 0.0).into(),
-            // which way is "up"
-            up: cgmath::Vector3::unit_y(),
-            aspect: 16.0 / 9.0,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
+        // let camera = Camera {
+        //     // position the camera one unit up and 2 units back
+        //     eye: (0.0, 1.0, -2.0).into(),
+        //     // have it look at the origin
+        //     target: (0.0, 0.0, 0.0).into(),
+        //     // which way is "up"
+        //     up: cgmath::Vector3::unit_y(),
+        //     aspect: 16.0 / 9.0,
+        //     fovy: 45.0,
+        //     znear: 0.1,
+        //     zfar: 100.0,
+        // };
 
-        let mut uniforms = Uniforms::new();
-        uniforms.update_view_proj(&camera);
+        // let mut uniforms = Uniforms::new();
+        // uniforms.update_view_proj(&camera);
 
-        let uniform_buffer = device.create_buffer_with_data(
-            bytemuck::cast_slice(&[uniforms]),
-            wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        );
+        // let uniform_buffer = device.create_buffer_with_data(
+        //     bytemuck::cast_slice(&[uniforms]),
+        //     wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        // );
 
-        let uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[wgpu::BindGroupLayoutEntry::new(
-                    0,
-                    wgpu::ShaderStage::VERTEX,
-                    wgpu::BindingType::StorageBuffer {
-                        dynamic: false,
-                        min_binding_size: std::num::NonZeroU64::new(1),
-                        readonly: true,
-                    },
-                )],
-                label: Some("uniform_bind_group_layout"),
-            });
+        // let uniform_bind_group_layout =
+        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        //         bindings: &[
+        //             wgpu::BindGroupLayoutEntry::new(
+        //                 0,
+        //                 wgpu::ShaderStage::VERTEX,
+        //                 wgpu::BindingType::UniformBuffer {
+        //                     dynamic: false,
+        //                     min_binding_size: None,
+        //                 },
+        //             ),
+        //             wgpu::BindGroupLayoutEntry::new(
+        //                 1,
+        //                 wgpu::ShaderStage::VERTEX,
+        //                 wgpu::BindingType::StorageBuffer {
+        //                     dynamic: false,
+        //                     min_binding_size: None,
+        //                     readonly: true,
+        //                 },
+        //             ),
+        //         ],
+        //         label: Some("uniform_bind_group_layout"),
+        //     });
 
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &uniform_bind_group_layout,
-            bindings: &[wgpu::Binding {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
-            }],
-            label: Some("uniform_bind_group"),
-        });
+        // let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &uniform_bind_group_layout,
+        //     bindings: &[
+        //         wgpu::Binding {
+        //             binding: 0,
+        //             resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
+        //         },
+        //         wgpu::Binding {
+        //             binding: 1,
+        //             resource: wgpu::BindingResource::Buffer(
+        //                 instance_buffer.slice(..instance_buffer_size as wgpu::BufferAddress),
+        //             ),
+        //         },
+        //     ],
+        //     label: Some("uniform_bind_group"),
+        // });
 
         let num_indices = INDICES.len() as u32;
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[&uniform_bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -215,15 +236,18 @@ impl Pipeline {
             alpha_to_coverage_enabled: false,
         });
 
-        Pipeline {
-            render_pipeline,
-            uniform_bind_group,
-            diffuse_bind_group,
-            diffuse_texture,
-            vertex_buffer,
-            index_buffer,
-            num_indices,
-        }
+        (
+            Pipeline {
+                render_pipeline,
+                // uniform_bind_group,
+                diffuse_bind_group,
+                diffuse_texture,
+                vertex_buffer,
+                index_buffer,
+                num_indices,
+            },
+            command_buffer,
+        )
     }
 
     pub fn render(
@@ -253,7 +277,8 @@ impl Pipeline {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            // render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..));
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);

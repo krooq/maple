@@ -3,14 +3,14 @@
 		{
 			"path": "."
 		},
-		{
-			"path": "..\\wgpu-macros"
-		},
+		// {
+		// 	"path": "..\\wgpu-macros"
+		// },
 		// {
 		// 	"path": "..\\wgpu-rs"
 		// },
-		// {
-		// 	"path": "..\\learn-wgpu"
-		// },
+		{
+			"path": "..\\learn-wgpu"
+		},
 	]
 }
