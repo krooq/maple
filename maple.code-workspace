@@ -3,9 +3,9 @@
 		{
 			"path": "."
 		},
-		// {
-		// 	"path": "..\\iced"
-		// },
+		{
+			"path": "..\\wgpu-macros"
+		},
 		// {
 		// 	"path": "..\\wgpu-rs"
 		// },

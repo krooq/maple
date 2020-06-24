@@ -4,7 +4,17 @@ use winit::{
     event::{self, WindowEvent},
     event_loop::ControlFlow,
 };
-
+/// A [`Display`] represents a single window and the
+/// GPU "plumbing" required to draw to that window.
+///
+/// Conceptually, if we consider the OS as a room in your house then a [`Display`] is analagous to a physical display.
+/// Lets use a TV as an analogy to a [`Display`], then we have
+/// window: the frame of the TV
+/// surface: the lcd screen
+/// device: the device transmitting the data for display, e.g. TV antenna
+/// queue: the commands sent to the device, e.g. remote control
+/// swap_chain_descriptor: display settings of the TV
+/// swap_chain: produces images to display, more of a technical detail, analogy ends here
 pub struct Display {
     window: winit::window::Window,
     surface: wgpu::Surface,
@@ -26,7 +36,6 @@ impl Display {
             .build(&event_loop)
             .unwrap();
         let surface = unsafe { instance.create_surface(&window) };
-        let size = window.inner_size();
         let adapter = instance
             .request_adapter(
                 &wgpu::RequestAdapterOptions {
@@ -46,7 +55,10 @@ impl Display {
                     limits: wgpu::Limits::default(),
                     shader_validation: true,
                 },
-                std::env::var("WGPU_TRACE").ok().as_ref().map(std::path::Path::new),
+                std::env::var("WGPU_TRACE")
+                    .ok()
+                    .as_ref()
+                    .map(std::path::Path::new),
             )
             .await
             .unwrap();
@@ -54,8 +66,8 @@ impl Display {
         let swap_chain_descriptor = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: size.width,
-            height: size.height,
+            width: window.inner_size().width,
+            height: window.inner_size().height,
             present_mode: wgpu::PresentMode::Mailbox,
         };
 

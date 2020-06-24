@@ -1,4 +1,7 @@
+use crate::camera::Camera;
+use crate::camera_controller::CameraController;
 use crate::instance::Instance;
+use crate::texture::Texture;
 use crate::uniforms::Uniforms;
 use crate::vertex::Vertex;
 // use std::mem;
@@ -33,41 +36,37 @@ use crate::vertex::Vertex;
 // unsafe impl bytemuck::Pod for Vertex {}
 // unsafe impl bytemuck::Zeroable for Vertex {}
 
-// #[rustfmt::skip]
-// const VERTICES: &[Vertex] = &[
-//     Vertex { position: [-0.0868241, 0.49240386, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // A
-//     Vertex { position: [-0.49513406, 0.06958647, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // B
-//     Vertex { position: [-0.21918549, -0.44939706, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // C
-//     Vertex { position: [0.35966998, -0.3473291, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // D
-//     Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // E
-// ];
+#[rustfmt::skip]
+const VERTICES: &[Vertex] = &[
+    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.0,0.0]}, // A
+    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0,0.0] }, // B
+    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.0,0.0] }, // C
+    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.0,0.0] }, // D
+    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.0,0.0] }, // E
+];
 
-// #[rustfmt::skip]
-// const INDICES: &[u16] = &[
-//     0, 1, 4,
-//     1, 2, 4,
-//     2, 3, 4,
-// ];
+#[rustfmt::skip]
+const INDICES: &[u16] = &[
+    0, 1, 4,
+    1, 2, 4,
+    2, 3, 4,
+];
 
 pub(crate) struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
     uniform_bind_group: wgpu::BindGroup,
+    diffuse_bind_group: wgpu::BindGroup,
+    diffuse_texture: Texture,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
 }
-const NUM_INSTANCES_PER_ROW: u32 = 10;
-const NUM_INSTANCES: u32 = NUM_INSTANCES_PER_ROW * NUM_INSTANCES_PER_ROW;
-const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
-    NUM_INSTANCES_PER_ROW as f32 * 0.5,
-    0.0,
-    NUM_INSTANCES_PER_ROW as f32 * 0.5,
-);
+
 /// A [`Pipeline`] is a recipe for rendering shapes.
 impl Pipeline {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Pipeline {
         use cgmath::prelude::*;
-        let instances: Vec<Instance> = Vec::new();
+        let mut instances = Vec::<Instance>::new();
         for x in 0..10 {
             for y in 0..10 {
                 instances.push(Instance {
@@ -76,34 +75,6 @@ impl Pipeline {
                 });
             }
         }
-
-        let instances: Vec<Instance> = (0..NUM_INSTANCES_PER_ROW)
-            .flat_map(|z| {
-                (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-                    let position = cgmath::Vector3 {
-                        x: x as f32,
-                        y: 0.0,
-                        z: z as f32,
-                    } - INSTANCE_DISPLACEMENT;
-
-                    let rotation = if position.is_zero() {
-                        // this is needed so an object at (0, 0, 0) won't get scaled to zero
-                        // as Quaternions can effect scale if they're not create correctly
-                        cgmath::Quaternion::from_axis_angle(
-                            cgmath::Vector3::unit_z(),
-                            cgmath::Deg(0.0),
-                        )
-                    } else {
-                        cgmath::Quaternion::from_axis_angle(
-                            position.clone().normalize(),
-                            cgmath::Deg(45.0),
-                        )
-                    };
-
-                    Instance { position, rotation }
-                })
-            })
-            .collect();
 
         let vertex_buffer = device
             .create_buffer_with_data(bytemuck::cast_slice(VERTICES), wgpu::BufferUsage::VERTEX);
@@ -120,9 +91,61 @@ impl Pipeline {
             wgpu::BufferUsage::STORAGE,
         );
 
-        // let mut camera =
-        let mut uniforms = Uniforms::new();
+        // Texture
+        let diffuse_bytes = include_bytes!("images/happy-tree.png");
+        let (diffuse_texture, command_buffer) =
+            Texture::from_bytes(&device, diffuse_bytes, "happy-tree").unwrap();
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                bindings: &[
+                    wgpu::BindGroupLayoutEntry::new(
+                        0,
+                        wgpu::ShaderStage::FRAGMENT,
+                        wgpu::BindingType::SampledTexture {
+                            multisampled: false,
+                            dimension: wgpu::TextureViewDimension::D2,
+                            component_type: wgpu::TextureComponentType::Uint,
+                        },
+                    ),
+                    wgpu::BindGroupLayoutEntry::new(
+                        1,
+                        wgpu::ShaderStage::FRAGMENT,
+                        wgpu::BindingType::Sampler { comparison: false },
+                    ),
+                ],
+                label: Some("texture_bind_group_layout"),
+            });
 
+        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            bindings: &[
+                wgpu::Binding {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::Binding {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group"),
+        });
+
+        // Camera
+        let camera = Camera {
+            // position the camera one unit up and 2 units back
+            eye: (0.0, 1.0, -2.0).into(),
+            // have it look at the origin
+            target: (0.0, 0.0, 0.0).into(),
+            // which way is "up"
+            up: cgmath::Vector3::unit_y(),
+            aspect: 16.0 / 9.0,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
+        };
+
+        let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
 
         let uniform_buffer = device.create_buffer_with_data(
@@ -195,6 +218,8 @@ impl Pipeline {
         Pipeline {
             render_pipeline,
             uniform_bind_group,
+            diffuse_bind_group,
+            diffuse_texture,
             vertex_buffer,
             index_buffer,
             num_indices,

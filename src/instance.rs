@@ -13,7 +13,7 @@ impl Instance {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
-struct InstanceRaw {
+pub struct InstanceRaw {
     model: cgmath::Matrix4<f32>,
 }
 
