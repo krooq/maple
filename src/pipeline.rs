@@ -48,6 +48,8 @@ const INDICES: &[u16] = &[
 ];
 
 pub(crate) struct Pipeline {
+    swap_chain_descriptor: wgpu::SwapChainDescriptor,
+    swap_chain: wgpu::SwapChain,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -55,7 +57,22 @@ pub(crate) struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Pipeline {
+    pub fn new(
+        device: &wgpu::Device,
+        surface: &wgpu::Surface,
+        width: u32,
+        height: u32,
+    ) -> Pipeline {
+        let swap_chain_descriptor = wgpu::SwapChainDescriptor {
+            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            width,
+            height,
+            present_mode: wgpu::PresentMode::Mailbox,
+        };
+
+        let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[],
         });
@@ -79,7 +96,7 @@ impl Pipeline {
             }),
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
-                format: format,
+                format: swap_chain_descriptor.format,
                 color_blend: wgpu::BlendDescriptor::REPLACE,
                 alpha_blend: wgpu::BlendDescriptor::REPLACE,
                 write_mask: wgpu::ColorWrite::ALL,
@@ -103,6 +120,8 @@ impl Pipeline {
         let num_indices = INDICES.len() as u32;
 
         Pipeline {
+            swap_chain_descriptor,
+            swap_chain,
             render_pipeline,
             vertex_buffer,
             index_buffer,
@@ -110,11 +129,21 @@ impl Pipeline {
         }
     }
 
-    pub fn render(
-        &self,
+    pub fn render_next_frame(
+        &mut self,
         device: &wgpu::Device,
-        frame: &wgpu::SwapChainFrame,
-    ) -> wgpu::CommandBuffer {
+        surface: &wgpu::Surface,
+    ) -> (wgpu::SwapChainFrame, wgpu::CommandBuffer) {
+        let frame = match self.swap_chain.get_next_frame() {
+            Ok(frame) => frame,
+            Err(_) => {
+                self.swap_chain = device.create_swap_chain(&surface, &self.swap_chain_descriptor);
+                self.swap_chain
+                    .get_next_frame()
+                    .expect("Failed to acquire next swap chain texture!")
+            }
+        };
+
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -142,7 +171,12 @@ impl Pipeline {
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 
-        encoder.finish()
+        (frame, encoder.finish())
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.swap_chain_descriptor.width = width;
+        self.swap_chain_descriptor.height = height;
     }
 }
 

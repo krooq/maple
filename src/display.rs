@@ -10,8 +10,6 @@ pub struct Display {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    swap_chain_descriptor: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
     pipeline: Pipeline,
 }
 
@@ -52,24 +50,13 @@ impl Display {
             .await
             .unwrap();
 
-        let swap_chain_descriptor = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Mailbox,
-        };
-
-        let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
-        let pipeline = Pipeline::new(&device, swap_chain_descriptor.format);
+        let pipeline = Pipeline::new(&device, &surface, size.width, size.height);
 
         Self {
             window,
             surface,
             device,
             queue,
-            swap_chain_descriptor,
-            swap_chain,
             pipeline,
         }
     }
@@ -80,23 +67,12 @@ impl Display {
 
     pub fn resize(&mut self, size: &PhysicalSize<u32>) {
         log::info!("Resizing to {:?}", size);
-        self.swap_chain_descriptor.width = size.width;
-        self.swap_chain_descriptor.height = size.height;
+        self.pipeline.resize(size.width, size.height);
     }
 
     pub fn draw(&mut self) {
-        let frame = match self.swap_chain.get_next_frame() {
-            Ok(frame) => frame,
-            Err(_) => {
-                self.swap_chain = self
-                    .device
-                    .create_swap_chain(&self.surface, &self.swap_chain_descriptor);
-                self.swap_chain
-                    .get_next_frame()
-                    .expect("Failed to acquire next swap chain texture!")
-            }
-        };
-        let command_buffer = self.pipeline.render(&self.device, &frame);
+        // _frame must not be dropped until the command_buffer is submitted
+        let (_frame, command_buffer) = self.pipeline.render_next_frame(&self.device, &self.surface);
         self.submit(Some(command_buffer));
     }
 
