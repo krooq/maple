@@ -1,10 +1,11 @@
+use crate::texture::Texture;
 use std::mem;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
     position: [f32; 3],
-    color: [f32; 4],
+    tex_coords: [f32; 2],
 }
 
 impl Vertex {
@@ -12,18 +13,7 @@ impl Vertex {
         wgpu::VertexBufferDescriptor {
             stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttributeDescriptor {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float3,
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float4,
-                },
-            ],
+            attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
         }
     }
 }
@@ -33,11 +23,11 @@ unsafe impl bytemuck::Zeroable for Vertex {}
 
 #[rustfmt::skip]
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.0868241, 0.49240386, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // A
-    Vertex { position: [-0.49513406, 0.06958647, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // B
-    Vertex { position: [-0.21918549, -0.44939706, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // C
-    Vertex { position: [0.35966998, -0.3473291, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // D
-    Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.0, 0.5, 1.0] }, // E
+    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
+    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
+    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
+    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
+    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], }, // E
 ];
 
 #[rustfmt::skip]
@@ -48,8 +38,11 @@ const INDICES: &[u16] = &[
 ];
 
 pub(crate) struct Pipeline {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     swap_chain_descriptor: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
+    diffuse_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -58,23 +51,20 @@ pub(crate) struct Pipeline {
 
 impl Pipeline {
     pub fn new(
-        device: &wgpu::Device,
         surface: &wgpu::Surface,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
         width: u32,
         height: u32,
     ) -> Pipeline {
-        let swap_chain_descriptor = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width,
-            height,
-            present_mode: wgpu::PresentMode::Mailbox,
-        };
+        let (swap_chain_descriptor, swap_chain) =
+            create_swap_chain(&surface, &device, width, height);
 
-        let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+        let (diffuse_bind_group_layout, diffuse_bind_group) =
+            create_diffuse_bind_group(&device, &queue);
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&diffuse_bind_group_layout],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -120,33 +110,36 @@ impl Pipeline {
         let num_indices = INDICES.len() as u32;
 
         Pipeline {
+            device,
+            queue,
             swap_chain_descriptor,
             swap_chain,
+            diffuse_bind_group,
             render_pipeline,
-            vertex_buffer,
             index_buffer,
+            vertex_buffer,
             num_indices,
         }
     }
 
-    pub fn render_next_frame(
-        &mut self,
-        device: &wgpu::Device,
-        surface: &wgpu::Surface,
-    ) -> (wgpu::SwapChainFrame, wgpu::CommandBuffer) {
+    pub fn render_next_frame(&mut self, surface: &wgpu::Surface) {
         let frame = match self.swap_chain.get_next_frame() {
             Ok(frame) => frame,
             Err(_) => {
-                self.swap_chain = device.create_swap_chain(&surface, &self.swap_chain_descriptor);
+                self.swap_chain = self
+                    .device
+                    .create_swap_chain(&surface, &self.swap_chain_descriptor);
                 self.swap_chain
                     .get_next_frame()
                     .expect("Failed to acquire next swap chain texture!")
             }
         };
 
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -155,29 +148,89 @@ impl Pipeline {
                     resolve_target: None,
                     load_op: wgpu::LoadOp::Clear,
                     store_op: wgpu::StoreOp::Store,
-                    clear_color: wgpu::Color {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                        a: 0.0,
-                    },
+                    clear_color: wgpu::Color::BLACK,
                 }],
                 depth_stencil_attachment: None,
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..));
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
-
-        (frame, encoder.finish())
+        self.queue.submit(vec![encoder.finish()]);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.swap_chain_descriptor.width = width;
         self.swap_chain_descriptor.height = height;
     }
+}
+
+fn create_swap_chain(
+    surface: &wgpu::Surface,
+    device: &wgpu::Device,
+    width: u32,
+    height: u32,
+) -> (wgpu::SwapChainDescriptor, wgpu::SwapChain) {
+    let swap_chain_descriptor = wgpu::SwapChainDescriptor {
+        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        width,
+        height,
+        present_mode: wgpu::PresentMode::Mailbox,
+    };
+
+    let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+    (swap_chain_descriptor, swap_chain)
+}
+
+fn create_diffuse_bind_group(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+    let diffuse_bytes = include_bytes!("happy-tree.png");
+    let (diffuse_texture, cmd_buffer) =
+        Texture::from_bytes(&device, diffuse_bytes, "happy-tree.png").unwrap();
+
+    let diffuse_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            bindings: &[
+                wgpu::BindGroupLayoutEntry::new(
+                    0,
+                    wgpu::ShaderStage::FRAGMENT,
+                    wgpu::BindingType::SampledTexture {
+                        multisampled: false,
+                        dimension: wgpu::TextureViewDimension::D2,
+                        component_type: wgpu::TextureComponentType::Uint,
+                    },
+                ),
+                wgpu::BindGroupLayoutEntry::new(
+                    1,
+                    wgpu::ShaderStage::FRAGMENT,
+                    wgpu::BindingType::Sampler { comparison: false },
+                ),
+            ],
+            label: Some("texture_bind_group_layout"),
+        });
+
+    let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        layout: &diffuse_bind_group_layout,
+        bindings: &[
+            wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+            },
+            wgpu::Binding {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+            },
+        ],
+        label: Some("diffuse_bind_group"),
+    });
+    queue.submit(vec![cmd_buffer]);
+    (diffuse_bind_group_layout, diffuse_bind_group)
 }
 
 fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {

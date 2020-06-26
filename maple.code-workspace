@@ -9,9 +9,9 @@
 		// {
 		// 	"path": "..\\wgpu-rs"
 		// },
-		// {
-		// 	"path": "..\\learn-wgpu"
-		// },
+		{
+			"path": "..\\learn-wgpu"
+		},
 	],
 	"settings": {}
 }

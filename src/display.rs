@@ -8,8 +8,6 @@ use winit::{
 pub struct Display {
     window: winit::window::Window,
     surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
     pipeline: Pipeline,
 }
 
@@ -40,29 +38,19 @@ impl Display {
         let trace_dir = std::env::var("WGPU_TRACE");
         let (device, queue) = adapter
             .request_device(
-                &wgpu::DeviceDescriptor {
-                    extensions: wgpu::Extensions::empty(),
-                    limits: wgpu::Limits::default(),
-                    shader_validation: true,
-                },
+                &wgpu::DeviceDescriptor::default(),
                 trace_dir.ok().as_ref().map(std::path::Path::new),
             )
             .await
             .unwrap();
 
-        let pipeline = Pipeline::new(&device, &surface, size.width, size.height);
+        let pipeline = Pipeline::new(&surface, device, queue, size.width, size.height);
 
         Self {
             window,
             surface,
-            device,
-            queue,
             pipeline,
         }
-    }
-
-    pub fn submit<I: IntoIterator<Item = wgpu::CommandBuffer>>(&self, command_buffers: I) {
-        self.queue.submit(command_buffers);
     }
 
     pub fn resize(&mut self, size: &PhysicalSize<u32>) {
@@ -71,9 +59,7 @@ impl Display {
     }
 
     pub fn draw(&mut self) {
-        // _frame must not be dropped until the command_buffer is submitted
-        let (_frame, command_buffer) = self.pipeline.render_next_frame(&self.device, &self.surface);
-        self.submit(Some(command_buffer));
+        self.pipeline.render_next_frame(&self.surface);
     }
 
     pub fn request_redraw(&self) {
