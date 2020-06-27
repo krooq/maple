@@ -1,4 +1,6 @@
+use crate::camera::Camera;
 use crate::texture::Texture;
+use crate::uniforms::Uniforms;
 use std::mem;
 
 #[repr(C)]
@@ -43,6 +45,7 @@ pub(crate) struct Pipeline {
     swap_chain_descriptor: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     diffuse_bind_group: wgpu::BindGroup,
+    uniform_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -63,8 +66,11 @@ impl Pipeline {
         let (diffuse_bind_group_layout, diffuse_bind_group) =
             create_diffuse_bind_group(&device, &queue);
 
+        let (uniform_bind_group_layout, uniform_bind_group) =
+            create_uniform_bind_group(&device, width, height);
+
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[&diffuse_bind_group_layout],
+            bind_group_layouts: &[&diffuse_bind_group_layout, &uniform_bind_group_layout],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -115,6 +121,7 @@ impl Pipeline {
             swap_chain_descriptor,
             swap_chain,
             diffuse_bind_group,
+            uniform_bind_group,
             render_pipeline,
             index_buffer,
             vertex_buffer,
@@ -155,6 +162,7 @@ impl Pipeline {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..));
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
@@ -232,7 +240,54 @@ fn create_diffuse_bind_group(
     queue.submit(vec![cmd_buffer]);
     (diffuse_bind_group_layout, diffuse_bind_group)
 }
+fn create_uniform_bind_group(
+    device: &wgpu::Device,
+    width: u32,
+    height: u32,
+) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+    let camera = Camera {
+        // position the camera one unit up and 2 units back
+        // +z is out of the screen
+        eye: (0.0, 1.0, 2.0).into(),
+        // have it look at the origin
+        target: (0.0, 0.0, 0.0).into(),
+        // which way is "up"
+        up: cgmath::Vector3::unit_y(),
+        aspect: width as f32 / height as f32,
+        fovy: 45.0,
+        znear: 0.1,
+        zfar: 100.0,
+    };
 
+    let mut uniforms = Uniforms::new();
+    uniforms.update_view_proj(&camera);
+
+    let uniform_buffer = device.create_buffer_with_data(
+        bytemuck::cast_slice(&[uniforms]),
+        wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+    );
+    let uniform_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            bindings: &[wgpu::BindGroupLayoutEntry::new(
+                0,
+                wgpu::ShaderStage::VERTEX,
+                wgpu::BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                },
+            )],
+            label: Some("uniform_bind_group_layout"),
+        });
+    let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        layout: &uniform_bind_group_layout,
+        bindings: &[wgpu::Binding {
+            binding: 0,
+            resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
+        }],
+        label: Some("uniform_bind_group"),
+    });
+    (uniform_bind_group_layout, uniform_bind_group)
+}
 fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
     let spv = &wgpu::read_spirv(std::io::Cursor::new(
         &include_bytes!("shader/shader.vert.spv")[..],

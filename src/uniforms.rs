@@ -18,3 +18,6 @@ impl Uniforms {
         self.view_proj = camera.build_view_projection_matrix();
     }
 }
+
+unsafe impl bytemuck::Pod for Uniforms {}
+unsafe impl bytemuck::Zeroable for Uniforms {}
