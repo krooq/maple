@@ -2,7 +2,7 @@ use super::camera::Camera;
 use cgmath::prelude::*;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Uniforms {
     view_proj: cgmath::Matrix4<f32>,
 }

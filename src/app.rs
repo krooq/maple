@@ -9,7 +9,7 @@ pub fn run() {
 
 async fn start() {
     let event_loop = EventLoop::new();
-    let gpu = wgpu::Instance::new();
+    let gpu = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
     let mut displays = vec![Display::new(&event_loop, &gpu, "main").await];
 
     let mut last_update_inst = time::Instant::now();

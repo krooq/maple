@@ -10,16 +10,46 @@ pub struct Camera {
     pub eye: cgmath::Point3<f32>,
     pub target: cgmath::Point3<f32>,
     pub up: cgmath::Vector3<f32>,
-    pub aspect: f32,
-    pub fovy: f32,
-    pub znear: f32,
-    pub zfar: f32,
+    pub projection: Projection,
+}
+
+pub enum Projection {
+    Perspective {
+        aspect: f32,
+        fovy: f32,
+        znear: f32,
+        zfar: f32,
+    },
+    Orthographic {
+        left: f32,
+        right: f32,
+        bottom: f32,
+        top: f32,
+        znear: f32,
+        zfar: f32,
+    },
 }
 
 impl Camera {
     pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
+        let proj = match self.projection {
+            Projection::Perspective {
+                aspect,
+                fovy,
+                znear,
+                zfar,
+            } => cgmath::perspective(cgmath::Deg(fovy), aspect, znear, zfar),
+            Projection::Orthographic {
+                left,
+                right,
+                bottom,
+                top,
+                znear,
+                zfar,
+            } => cgmath::ortho(left, right, bottom, top, znear, zfar),
+        };
+        // let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        return proj * view;
     }
 }

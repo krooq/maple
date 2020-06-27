@@ -86,9 +86,7 @@ impl Pipeline {
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: wgpu::CullMode::Back,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
+                ..Default::default()
             }),
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
@@ -153,9 +151,10 @@ impl Pipeline {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.output.view,
                     resolve_target: None,
-                    load_op: wgpu::LoadOp::Clear,
-                    store_op: wgpu::StoreOp::Store,
-                    clear_color: wgpu::Color::BLACK,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: false,
+                    },
                 }],
                 depth_stencil_attachment: None,
             });
@@ -246,26 +245,33 @@ fn create_uniform_bind_group(
     height: u32,
 ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
     let camera = Camera {
-        // position the camera one unit up and 2 units back
-        // +z is out of the screen
-        eye: (0.0, 1.0, 2.0).into(),
-        // have it look at the origin
+        eye: (0.0, 0.0, 2.0).into(),
         target: (0.0, 0.0, 0.0).into(),
-        // which way is "up"
         up: cgmath::Vector3::unit_y(),
-        aspect: width as f32 / height as f32,
-        fovy: 45.0,
-        znear: 0.1,
-        zfar: 100.0,
+        projection: crate::camera::Projection::Perspective {
+            aspect: width as f32 / height as f32,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
+        },
+        // projection: crate::camera::Projection::Orthographic {
+        //     left: -1.0,
+        //     right: 1.0,
+        //     bottom: -1.0,
+        //     top: 1.0,
+        //     znear: 0.1,
+        //     // set to znear + eye.z
+        //     zfar: 2.1,
+        // },
     };
 
     let mut uniforms = Uniforms::new();
     uniforms.update_view_proj(&camera);
-
     let uniform_buffer = device.create_buffer_with_data(
         bytemuck::cast_slice(&[uniforms]),
         wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
     );
+
     let uniform_bind_group_layout =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[wgpu::BindGroupLayoutEntry::new(
@@ -289,17 +295,9 @@ fn create_uniform_bind_group(
     (uniform_bind_group_layout, uniform_bind_group)
 }
 fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
-    let spv = &wgpu::read_spirv(std::io::Cursor::new(
-        &include_bytes!("shader/shader.vert.spv")[..],
-    ))
-    .expect("Read shader as SPIR-V");
-    device.create_shader_module(&spv)
+    device.create_shader_module(wgpu::include_spirv!("shader/shader.vert.spv"))
 }
 
 fn create_fragment_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
-    let spv = &wgpu::read_spirv(std::io::Cursor::new(
-        &include_bytes!("shader/shader.frag.spv")[..],
-    ))
-    .expect("Read shader as SPIR-V");
-    device.create_shader_module(&spv)
+    device.create_shader_module(wgpu::include_spirv!("shader/shader.frag.spv"))
 }
