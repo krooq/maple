@@ -37,7 +37,10 @@ impl Display {
         let trace_dir = std::env::var("WGPU_TRACE");
         let (device, queue) = adapter
             .request_device(
-                &wgpu::DeviceDescriptor::default(),
+                &wgpu::DeviceDescriptor {
+                    shader_validation: true,
+                    ..Default::default()
+                },
                 trace_dir.ok().as_ref().map(std::path::Path::new),
             )
             .await

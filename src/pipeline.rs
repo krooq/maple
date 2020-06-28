@@ -1,8 +1,8 @@
 use crate::camera::Camera;
 use crate::texture::Texture;
 use crate::uniforms::Uniforms;
+use cgmath::prelude::*;
 use std::mem;
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
@@ -38,6 +38,46 @@ const INDICES: &[u16] = &[
     1, 2, 4,
     2, 3, 4,
 ];
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct Instance {
+    position: cgmath::Vector3<f32>,
+    rotation: cgmath::Quaternion<f32>,
+}
+
+impl Instance {
+    fn to_raw(&self) -> InstanceRaw {
+        InstanceRaw {
+            model: cgmath::Matrix4::from_translation(self.position)
+                * cgmath::Matrix4::from(self.rotation),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct InstanceRaw {
+    model: cgmath::Matrix4<f32>,
+}
+
+unsafe impl bytemuck::Pod for InstanceRaw {}
+unsafe impl bytemuck::Zeroable for InstanceRaw {}
+
+fn instances() -> Vec<Instance> {
+    (0..5)
+        .flat_map(|x| {
+            (0..5).map(move |y| {
+                let position = cgmath::Vector3 {
+                    x: x as f32,
+                    y: y as f32,
+                    z: 0.0,
+                };
+                let rotation = cgmath::Quaternion::one();
+                Instance { position, rotation }
+            })
+        })
+        .collect()
+}
 
 pub(crate) struct Pipeline {
     device: wgpu::Device,
@@ -46,6 +86,7 @@ pub(crate) struct Pipeline {
     swap_chain: wgpu::SwapChain,
     diffuse_bind_group: wgpu::BindGroup,
     uniform_bind_group: wgpu::BindGroup,
+    instance_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -69,8 +110,14 @@ impl Pipeline {
         let (uniform_bind_group_layout, uniform_bind_group) =
             create_uniform_bind_group(&device, width, height);
 
+        let (instance_bind_group_layout, instance_bind_group) = create_instance_bind_group(&device);
+
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[&diffuse_bind_group_layout, &uniform_bind_group_layout],
+            bind_group_layouts: &[
+                &diffuse_bind_group_layout,
+                &uniform_bind_group_layout,
+                &instance_bind_group_layout,
+            ],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -120,6 +167,7 @@ impl Pipeline {
             swap_chain,
             diffuse_bind_group,
             uniform_bind_group,
+            instance_bind_group,
             render_pipeline,
             index_buffer,
             vertex_buffer,
@@ -162,9 +210,10 @@ impl Pipeline {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            render_pass.set_bind_group(2, &self.instance_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..));
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..25);
         }
         self.queue.submit(vec![encoder.finish()]);
     }
@@ -245,7 +294,7 @@ fn create_uniform_bind_group(
     height: u32,
 ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
     let camera = Camera {
-        eye: (0.0, 0.0, 2.0).into(),
+        eye: (0.0, 0.0, 10.0).into(),
         target: (0.0, 0.0, 0.0).into(),
         up: cgmath::Vector3::unit_y(),
         projection: crate::camera::Projection::Perspective {
@@ -279,7 +328,7 @@ fn create_uniform_bind_group(
                 wgpu::ShaderStage::VERTEX,
                 wgpu::BindingType::UniformBuffer {
                     dynamic: false,
-                    min_binding_size: None,
+                    min_binding_size: wgpu::BufferSize::new(std::mem::size_of_val(&uniforms) as _),
                 },
             )],
             label: Some("uniform_bind_group_layout"),
@@ -294,6 +343,47 @@ fn create_uniform_bind_group(
     });
     (uniform_bind_group_layout, uniform_bind_group)
 }
+
+fn create_instance_bind_group(device: &wgpu::Device) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+    let instance_data = instances()
+        .iter()
+        .map(Instance::to_raw)
+        .collect::<Vec<InstanceRaw>>();
+    // we'll need the size for later
+    let instance_buffer_size = instance_data.len() * std::mem::size_of::<cgmath::Matrix4<f32>>();
+    let instance_buffer = device.create_buffer_with_data(
+        bytemuck::cast_slice(&instance_data),
+        wgpu::BufferUsage::STORAGE,
+    );
+
+    let instance_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            bindings: &[wgpu::BindGroupLayoutEntry::new(
+                0,
+                wgpu::ShaderStage::VERTEX,
+                wgpu::BindingType::StorageBuffer {
+                    dynamic: false,
+                    min_binding_size: wgpu::BufferSize::new(instance_buffer_size as _),
+                    readonly: false,
+                },
+            )],
+            label: Some("instance_bind_group_layout"),
+        });
+
+    let instance_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        layout: &instance_bind_group_layout,
+        bindings: &[wgpu::Binding {
+            binding: 0,
+            resource: wgpu::BindingResource::Buffer(
+                instance_buffer.slice(0..(instance_buffer_size as u64)),
+            ),
+        }],
+        label: Some("instance_bind_group"),
+    });
+
+    (instance_bind_group_layout, instance_bind_group)
+}
+
 fn create_vertex_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
     device.create_shader_module(wgpu::include_spirv!("shader/shader.vert.spv"))
 }
