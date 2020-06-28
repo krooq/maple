@@ -10,18 +10,20 @@ pub struct Texture {
 impl Texture {
     pub fn from_bytes(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         bytes: &[u8],
         label: &str,
-    ) -> Result<(Self, wgpu::CommandBuffer), Error> {
+    ) -> Result<Self, Error> {
         let img = image::load_from_memory(bytes)?;
-        Self::from_image(device, &img, Some(label))
+        Self::from_image(device, queue, &img, Some(label))
     }
 
     pub fn from_image(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         img: &image::DynamicImage,
         label: Option<&str>,
-    ) -> Result<(Self, wgpu::CommandBuffer), Error> {
+    ) -> Result<Self, Error> {
         let rgba = img.as_rgba8().unwrap();
         let dimensions = img.dimensions();
 
@@ -30,6 +32,7 @@ impl Texture {
             height: dimensions.1,
             depth: 1,
         };
+
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
             size,
@@ -40,41 +43,28 @@ impl Texture {
             usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
         });
 
-        let buffer = device.create_buffer_with_data(&rgba, wgpu::BufferUsage::COPY_SRC);
-
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("texture_buffer_copy_encoder"),
-        });
-
-        encoder.copy_buffer_to_texture(
-            wgpu::BufferCopyView {
-                buffer: &buffer,
-                layout: wgpu::TextureDataLayout {
-                    offset: 0,
-                    bytes_per_row: 4 * dimensions.0,
-                    rows_per_image: dimensions.1,
-                },
-            },
+        queue.write_texture(
             wgpu::TextureCopyView {
                 texture: &texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
+            rgba,
+            wgpu::TextureDataLayout {
+                offset: 0,
+                bytes_per_row: 4 * dimensions.0,
+                rows_per_image: dimensions.1,
+            },
             size,
         );
-
-        let cmd_buffer = encoder.finish();
 
         let view = texture.create_default_view();
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor::default());
 
-        Ok((
-            Self {
-                texture,
-                view,
-                sampler,
-            },
-            cmd_buffer,
-        ))
+        Ok(Self {
+            texture,
+            view,
+            sampler,
+        })
     }
 }

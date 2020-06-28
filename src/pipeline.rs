@@ -1,67 +1,40 @@
 use crate::camera::Camera;
+use crate::instance::{Instance, InstanceRaw};
 use crate::texture::Texture;
-use crate::uniforms::Uniforms;
+use crate::uniform::Uniform;
+use crate::vertex::Vertex;
+
 use cgmath::prelude::*;
-use std::mem;
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
 
-impl Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
-        }
-    }
-}
-
-unsafe impl bytemuck::Pod for Vertex {}
-unsafe impl bytemuck::Zeroable for Vertex {}
-
+// square quad
 #[rustfmt::skip]
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
-    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
-    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
-    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
-    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], }, // E
-];
 
+    Vertex { position: [-0.5,  0.5, 0.0], tex_coords: [0.4131759, 0.00759614], }, // top left
+    Vertex { position: [ 0.5,  0.5, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // top right
+    Vertex { position: [ 0.5, -0.5, 0.0], tex_coords: [0.28081453, 0.949397057], }, // bottm right
+    Vertex { position: [-0.5, -0.5, 0.0], tex_coords: [0.85967, 0.84732911], }, // bottom left
+];
 #[rustfmt::skip]
 const INDICES: &[u16] = &[
-    0, 1, 4,
-    1, 2, 4,
-    2, 3, 4,
+    0, 2, 1,
+    0, 3, 2,
 ];
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct Instance {
-    position: cgmath::Vector3<f32>,
-    rotation: cgmath::Quaternion<f32>,
-}
-
-impl Instance {
-    fn to_raw(&self) -> InstanceRaw {
-        InstanceRaw {
-            model: cgmath::Matrix4::from_translation(self.position)
-                * cgmath::Matrix4::from(self.rotation),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct InstanceRaw {
-    model: cgmath::Matrix4<f32>,
-}
-
-unsafe impl bytemuck::Pod for InstanceRaw {}
-unsafe impl bytemuck::Zeroable for InstanceRaw {}
+// pentagon
+// #[rustfmt::skip]
+// const VERTICES: &[Vertex] = &[
+//     Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
+//     Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
+//     Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
+//     Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
+//     Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], }, // E
+// ];
+// #[rustfmt::skip]
+// const INDICES: &[u16] = &[
+//     0, 1, 4,
+//     1, 2, 4,
+//     2, 3, 4,
+// ];
 
 fn instances() -> Vec<Instance> {
     (0..5)
@@ -247,8 +220,8 @@ fn create_diffuse_bind_group(
     queue: &wgpu::Queue,
 ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
     let diffuse_bytes = include_bytes!("happy-tree.png");
-    let (diffuse_texture, cmd_buffer) =
-        Texture::from_bytes(&device, diffuse_bytes, "happy-tree.png").unwrap();
+    let diffuse_texture =
+        Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
     let diffuse_bind_group_layout =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -268,7 +241,7 @@ fn create_diffuse_bind_group(
                     wgpu::BindingType::Sampler { comparison: false },
                 ),
             ],
-            label: Some("texture_bind_group_layout"),
+            label: Some("diffuse_bind_group_layout"),
         });
 
     let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -285,36 +258,29 @@ fn create_diffuse_bind_group(
         ],
         label: Some("diffuse_bind_group"),
     });
-    queue.submit(vec![cmd_buffer]);
     (diffuse_bind_group_layout, diffuse_bind_group)
 }
+
 fn create_uniform_bind_group(
     device: &wgpu::Device,
     width: u32,
     height: u32,
 ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
     let camera = Camera {
-        eye: (0.0, 0.0, 10.0).into(),
+        eye: (0.0, 0.0, 1.0).into(),
         target: (0.0, 0.0, 0.0).into(),
         up: cgmath::Vector3::unit_y(),
-        projection: crate::camera::Projection::Perspective {
-            aspect: width as f32 / height as f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
+        projection: crate::camera::Projection::Orthographic {
+            left: -0.5,
+            right: 1.0,
+            bottom: -1.0,
+            top: 1.0,
+            near: 0.0,
+            far: 2.0,
         },
-        // projection: crate::camera::Projection::Orthographic {
-        //     left: -1.0,
-        //     right: 1.0,
-        //     bottom: -1.0,
-        //     top: 1.0,
-        //     znear: 0.1,
-        //     // set to znear + eye.z
-        //     zfar: 2.1,
-        // },
     };
 
-    let mut uniforms = Uniforms::new();
+    let mut uniforms = Uniform::new();
     uniforms.update_view_proj(&camera);
     let uniform_buffer = device.create_buffer_with_data(
         bytemuck::cast_slice(&[uniforms]),

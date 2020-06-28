@@ -3,11 +3,11 @@ use cgmath::prelude::*;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct Uniforms {
+pub struct Uniform {
     view_proj: cgmath::Matrix4<f32>,
 }
 
-impl Uniforms {
+impl Uniform {
     pub fn new() -> Self {
         Self {
             view_proj: cgmath::Matrix4::identity(),
@@ -19,5 +19,5 @@ impl Uniforms {
     }
 }
 
-unsafe impl bytemuck::Pod for Uniforms {}
-unsafe impl bytemuck::Zeroable for Uniforms {}
+unsafe impl bytemuck::Pod for Uniform {}
+unsafe impl bytemuck::Zeroable for Uniform {}

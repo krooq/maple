@@ -17,16 +17,19 @@ pub enum Projection {
     Perspective {
         aspect: f32,
         fovy: f32,
-        znear: f32,
-        zfar: f32,
+        near: f32,
+        far: f32,
     },
+    /// The following is required to make orthographic projection work.
+    /// far <= (2 * eye.z) - near
+    /// eye.z >= 0
     Orthographic {
         left: f32,
         right: f32,
         bottom: f32,
         top: f32,
-        znear: f32,
-        zfar: f32,
+        near: f32,
+        far: f32,
     },
 }
 
@@ -37,19 +40,18 @@ impl Camera {
             Projection::Perspective {
                 aspect,
                 fovy,
-                znear,
-                zfar,
-            } => cgmath::perspective(cgmath::Deg(fovy), aspect, znear, zfar),
+                near,
+                far,
+            } => cgmath::perspective(cgmath::Deg(fovy), aspect, near, far),
             Projection::Orthographic {
                 left,
                 right,
                 bottom,
                 top,
-                znear,
-                zfar,
-            } => cgmath::ortho(left, right, bottom, top, znear, zfar),
+                near,
+                far,
+            } => cgmath::ortho(left, right, bottom, top, near, far),
         };
-        // let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
         return proj * view;
     }
 }

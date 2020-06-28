@@ -6,6 +6,8 @@ pub mod camera;
 pub mod error;
 
 pub mod display;
+pub mod instance;
 pub mod pipeline;
 pub mod texture;
-pub mod uniforms;
+pub mod uniform;
+pub mod vertex;
