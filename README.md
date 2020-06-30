@@ -17,6 +17,13 @@ The following are **not** in the scope of Maple:
 - Basic UI toolkit
 - UI design app
 
+## Crates
+Maple does not aim to provide multiple backends itself, although for some functions it should be possible to create your own and plug it in.
+The crates used for builtin functions are:
+- winit for windowing
+- wgpu for graphics
+Check the Cargo.toml for details.
+
 ## Principles
 The design of Maple is driven by high level principles rather than rules or conventions.
 

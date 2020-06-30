@@ -1,56 +1,11 @@
-use crate::camera::Camera;
-use crate::instance::{Instance, InstanceRaw};
-use crate::texture::Texture;
-use crate::uniform::Uniform;
-use crate::vertex::Vertex;
+use super::camera::Projection;
+use super::instance::{Instance, InstanceRaw};
+use super::texture::Texture;
+use super::uniform::Uniform;
+use super::vertex::Vertex;
+use crate::render::camera::Camera;
 
 use cgmath::prelude::*;
-
-// square quad
-#[rustfmt::skip]
-const VERTICES: &[Vertex] = &[
-
-    Vertex { position: [-0.5,  0.5, 0.0], tex_coords: [0.4131759, 0.00759614], }, // top left
-    Vertex { position: [ 0.5,  0.5, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // top right
-    Vertex { position: [ 0.5, -0.5, 0.0], tex_coords: [0.28081453, 0.949397057], }, // bottm right
-    Vertex { position: [-0.5, -0.5, 0.0], tex_coords: [0.85967, 0.84732911], }, // bottom left
-];
-#[rustfmt::skip]
-const INDICES: &[u16] = &[
-    0, 2, 1,
-    0, 3, 2,
-];
-// pentagon
-// #[rustfmt::skip]
-// const VERTICES: &[Vertex] = &[
-//     Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
-//     Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
-//     Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
-//     Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
-//     Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], }, // E
-// ];
-// #[rustfmt::skip]
-// const INDICES: &[u16] = &[
-//     0, 1, 4,
-//     1, 2, 4,
-//     2, 3, 4,
-// ];
-
-fn instances() -> Vec<Instance> {
-    (0..5)
-        .flat_map(|x| {
-            (0..5).map(move |y| {
-                let position = cgmath::Vector3 {
-                    x: x as f32,
-                    y: y as f32,
-                    z: 0.0,
-                };
-                let rotation = cgmath::Quaternion::one();
-                Instance { position, rotation }
-            })
-        })
-        .collect()
-}
 
 pub(crate) struct Pipeline {
     device: wgpu::Device,
@@ -74,16 +29,20 @@ impl Pipeline {
         width: u32,
         height: u32,
     ) -> Pipeline {
+        let instances = &Vec::<Instance>::new()[..];
+        let vertices = &Vec::<Vertex>::new()[..];
+        let indices = &Vec::<u16>::new()[..];
+
         let (swap_chain_descriptor, swap_chain) =
             create_swap_chain(&surface, &device, width, height);
 
         let (diffuse_bind_group_layout, diffuse_bind_group) =
             create_diffuse_bind_group(&device, &queue);
 
-        let (uniform_bind_group_layout, uniform_bind_group) =
-            create_uniform_bind_group(&device, width, height);
+        let (uniform_bind_group_layout, uniform_bind_group) = create_uniform_bind_group(&device);
 
-        let (instance_bind_group_layout, instance_bind_group) = create_instance_bind_group(&device);
+        let (instance_bind_group_layout, instance_bind_group) =
+            create_instance_bind_group(&device, instances);
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[
@@ -126,12 +85,12 @@ impl Pipeline {
         });
 
         let vertex_buffer = device
-            .create_buffer_with_data(bytemuck::cast_slice(VERTICES), wgpu::BufferUsage::VERTEX);
+            .create_buffer_with_data(bytemuck::cast_slice(vertices), wgpu::BufferUsage::VERTEX);
 
         let index_buffer =
-            device.create_buffer_with_data(bytemuck::cast_slice(INDICES), wgpu::BufferUsage::INDEX);
+            device.create_buffer_with_data(bytemuck::cast_slice(indices), wgpu::BufferUsage::INDEX);
 
-        let num_indices = INDICES.len() as u32;
+        let num_indices = indices.len() as u32;
 
         Pipeline {
             device,
@@ -148,7 +107,11 @@ impl Pipeline {
         }
     }
 
-    pub fn render_next_frame(&mut self, surface: &wgpu::Surface) {
+    pub fn render_next_frame<G: IntoIterator<Item = Graphic>>(
+        &mut self,
+        surface: &wgpu::Surface,
+        graphics: G,
+    ) {
         let frame = match self.swap_chain.get_next_frame() {
             Ok(frame) => frame,
             Err(_) => {
@@ -188,7 +151,7 @@ impl Pipeline {
             render_pass.set_index_buffer(self.index_buffer.slice(..));
             render_pass.draw_indexed(0..self.num_indices, 0, 0..25);
         }
-        self.queue.submit(vec![encoder.finish()]);
+        self.queue.submit(Some(encoder.finish()));
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -219,7 +182,7 @@ fn create_diffuse_bind_group(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
 ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
-    let diffuse_bytes = include_bytes!("happy-tree.png");
+    let diffuse_bytes = include_bytes!("../images/happy-tree.png");
     let diffuse_texture =
         Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
@@ -261,16 +224,12 @@ fn create_diffuse_bind_group(
     (diffuse_bind_group_layout, diffuse_bind_group)
 }
 
-fn create_uniform_bind_group(
-    device: &wgpu::Device,
-    width: u32,
-    height: u32,
-) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+fn create_uniform_bind_group(device: &wgpu::Device) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
     let camera = Camera {
         eye: (0.0, 0.0, 1.0).into(),
         target: (0.0, 0.0, 0.0).into(),
         up: cgmath::Vector3::unit_y(),
-        projection: crate::camera::Projection::Orthographic {
+        projection: Projection::Orthographic {
             left: -0.5,
             right: 1.0,
             bottom: -1.0,
@@ -310,8 +269,11 @@ fn create_uniform_bind_group(
     (uniform_bind_group_layout, uniform_bind_group)
 }
 
-fn create_instance_bind_group(device: &wgpu::Device) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
-    let instance_data = instances()
+fn create_instance_bind_group(
+    device: &wgpu::Device,
+    instances: &[Instance],
+) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+    let instance_data = instances
         .iter()
         .map(Instance::to_raw)
         .collect::<Vec<InstanceRaw>>();

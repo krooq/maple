@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::render::error::Error;
 use image::GenericImageView;
 
 pub struct Texture {

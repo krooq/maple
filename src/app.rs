@@ -1,4 +1,4 @@
-use crate::display::Display;
+use crate::render::display::Display;
 use std::time;
 use winit::{event::Event, event_loop::EventLoop};
 
@@ -13,7 +13,7 @@ async fn start() {
     let mut displays = vec![Display::new(&event_loop, &gpu, "main").await];
 
     let mut last_update_inst = time::Instant::now();
-    log::info!("Entering event loop...");
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::MainEventsCleared => {
             if last_update_inst.elapsed() > time::Duration::from_millis(20) {

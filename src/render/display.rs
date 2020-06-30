@@ -1,16 +1,20 @@
-use crate::pipeline::Pipeline;
+use crate::render::pipeline::Pipeline;
 use winit::dpi::PhysicalSize;
 use winit::{
     event::{self, WindowEvent},
     event_loop::ControlFlow,
 };
-/// [`Display`]: ./struct.Display.html
+
+/// A [`Display`] combines a presentable window with a graphics renderer.
+///
+/// [`Display`]: struct.Display.html
 pub struct Display {
     window: winit::window::Window,
     surface: wgpu::Surface,
     pipeline: Pipeline,
 }
 
+/// [`Display`]: struct.Display.html
 impl Display {
     pub async fn new<T: Into<String>>(
         event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
@@ -21,8 +25,9 @@ impl Display {
             .with_title(title)
             .build(&event_loop)
             .unwrap();
-        let surface = unsafe { instance.create_surface(&window) };
         let size = window.inner_size();
+
+        let surface = unsafe { instance.create_surface(&window) };
         let adapter = instance
             .request_adapter(
                 &wgpu::RequestAdapterOptions {
@@ -61,7 +66,7 @@ impl Display {
     }
 
     pub fn draw(&mut self) {
-        self.pipeline.render_next_frame(&self.surface);
+        self.pipeline.render_next_frame(&self.surface, graphics);
     }
 
     pub fn request_redraw(&self) {
