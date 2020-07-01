@@ -1,5 +1,5 @@
 use super::mesh::{instances, quad};
-use crate::render::pipeline::Pipeline;
+use crate::render::renderer::Renderer;
 use winit::dpi::PhysicalSize;
 use winit::{
     event::{self, WindowEvent},
@@ -12,7 +12,7 @@ use winit::{
 pub struct Display {
     window: winit::window::Window,
     surface: wgpu::Surface,
-    pipeline: Pipeline,
+    renderer: Renderer,
 }
 
 /// [`Display`]: struct.Display.html
@@ -52,25 +52,25 @@ impl Display {
             .await
             .unwrap();
 
-        let pipeline = Pipeline::new(&surface, device, queue, size.width, size.height);
+        let renderer = Renderer::new(&surface, device, queue, size.width, size.height);
 
         Self {
             window,
             surface,
-            pipeline,
+            renderer,
         }
     }
 
     pub fn resize(&mut self, size: &PhysicalSize<u32>) {
         log::info!("Resizing to {:?}", size);
-        self.pipeline.resize(size.width, size.height);
+        self.renderer.resize(size.width, size.height);
     }
 
     pub fn draw(&mut self, window_id: winit::window::WindowId) {
         if window_id == self.window.id() {
             let mesh = quad();
             let instances = instances(1, 1);
-            self.pipeline.draw_frame(
+            self.renderer.draw_frame(
                 &self.surface,
                 &mesh.vertices[..],
                 &mesh.indices[..],
