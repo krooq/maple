@@ -1,3 +1,4 @@
+use super::mesh::{instances, quad};
 use crate::render::pipeline::Pipeline;
 use winit::dpi::PhysicalSize;
 use winit::{
@@ -65,16 +66,31 @@ impl Display {
         self.pipeline.resize(size.width, size.height);
     }
 
-    pub fn draw(&mut self) {
-        self.pipeline.render_next_frame(&self.surface, graphics);
+    pub fn draw(&mut self, window_id: winit::window::WindowId) {
+        if window_id == self.window.id() {
+            let mesh = quad();
+            let instances = instances(1, 1);
+            self.pipeline.draw_frame(
+                &self.surface,
+                &mesh.vertices[..],
+                &mesh.indices[..],
+                &instances[..],
+            );
+        }
     }
 
     pub fn request_redraw(&self) {
         self.window.request_redraw();
     }
 
-    pub fn send_event(&mut self, event: &WindowEvent, control_flow: &mut ControlFlow) {
-        match event {
+    pub fn send_event(
+        &mut self,
+        event: &WindowEvent,
+        window_id: winit::window::WindowId,
+        control_flow: &mut ControlFlow,
+    ) {
+        if window_id == self.window.id() {
+            match event {
             WindowEvent::Resized(size) => {
                 self.resize(&size);
             }
@@ -90,6 +106,7 @@ impl Display {
             // TODO: change the way events work
             | WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
             _ => {}
+        }
         }
     }
 }

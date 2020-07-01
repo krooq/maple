@@ -2,7 +2,10 @@ use super::camera::Projection;
 use super::instance::{Instance, InstanceRaw};
 use super::texture::Texture;
 use super::uniform::Uniform;
-use super::vertex::Vertex;
+use super::{
+    mesh::{instances, quad, Graphic},
+    vertex::Vertex,
+};
 use crate::render::camera::Camera;
 
 use cgmath::prelude::*;
@@ -19,6 +22,7 @@ pub(crate) struct Pipeline {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
+    instance_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Pipeline {
@@ -29,10 +33,11 @@ impl Pipeline {
         width: u32,
         height: u32,
     ) -> Pipeline {
-        let instances = &Vec::<Instance>::new()[..];
+        // let instances = &Vec::<Instance>::new()[..];
         let vertices = &Vec::<Vertex>::new()[..];
         let indices = &Vec::<u16>::new()[..];
 
+        let instances = &instances(1, 1)[..];
         let (swap_chain_descriptor, swap_chain) =
             create_swap_chain(&surface, &device, width, height);
 
@@ -104,14 +109,50 @@ impl Pipeline {
             index_buffer,
             vertex_buffer,
             num_indices,
+            instance_bind_group_layout,
         }
     }
 
-    pub fn render_next_frame<G: IntoIterator<Item = Graphic>>(
+    pub fn draw_frame(
         &mut self,
         surface: &wgpu::Surface,
-        graphics: G,
+        vertices: &[Vertex],
+        indices: &[u16],
+        instances: &[Instance],
     ) {
+        let instance_data = instances
+            .iter()
+            .map(Instance::to_raw)
+            .collect::<Vec<InstanceRaw>>();
+        // we'll need the size for later
+        let instance_buffer_size =
+            instance_data.len() * std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let instance_buffer = self.device.create_buffer_with_data(
+            bytemuck::cast_slice(&instance_data),
+            wgpu::BufferUsage::STORAGE,
+        );
+        let instance_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.instance_bind_group_layout,
+            bindings: &[wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(
+                    instance_buffer.slice(0..(instance_buffer_size as u64)),
+                ),
+            }],
+            label: Some("instance_bind_group"),
+        });
+
+        self.instance_bind_group = instance_bind_group;
+        self.vertex_buffer = self
+            .device
+            .create_buffer_with_data(bytemuck::cast_slice(vertices), wgpu::BufferUsage::VERTEX);
+
+        self.index_buffer = self
+            .device
+            .create_buffer_with_data(bytemuck::cast_slice(indices), wgpu::BufferUsage::INDEX);
+
+        self.num_indices = indices.len() as u32;
+
         let frame = match self.swap_chain.get_next_frame() {
             Ok(frame) => frame,
             Err(_) => {
@@ -149,7 +190,7 @@ impl Pipeline {
             render_pass.set_bind_group(2, &self.instance_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..));
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..25);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..instances.len() as u32);
         }
         self.queue.submit(Some(encoder.finish()));
     }
@@ -230,11 +271,11 @@ fn create_uniform_bind_group(device: &wgpu::Device) -> (wgpu::BindGroupLayout, w
         target: (0.0, 0.0, 0.0).into(),
         up: cgmath::Vector3::unit_y(),
         projection: Projection::Orthographic {
-            left: -0.5,
+            left: -1.0,
             right: 1.0,
             bottom: -1.0,
             top: 1.0,
-            near: 0.0,
+            near: -1.0,
             far: 2.0,
         },
     };
@@ -291,7 +332,7 @@ fn create_instance_bind_group(
                 wgpu::ShaderStage::VERTEX,
                 wgpu::BindingType::StorageBuffer {
                     dynamic: false,
-                    min_binding_size: wgpu::BufferSize::new(instance_buffer_size as _),
+                    min_binding_size: None,
                     readonly: false,
                 },
             )],

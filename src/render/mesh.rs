@@ -1,15 +1,16 @@
-use super::vertex::Vertex;
+use super::{instance::Instance, vertex::Vertex};
+use cgmath::prelude::*;
 
 // square quad
 #[rustfmt::skip]
-const VERTICES: &[Vertex] = &[
+pub const VERTICES: &[Vertex] = &[
     Vertex { position: [-0.5,  0.5, 0.0], color: [0.5, 0.0, 0.0, 0.5], tex_coords: [0.413, 0.007], mix_factor: 0.0 }, // top left
     Vertex { position: [ 0.5,  0.5, 0.0], color: [0.5, 0.0, 0.0, 0.5], tex_coords: [0.004, 0.430], mix_factor: 0.0 }, // top right
     Vertex { position: [ 0.5, -0.5, 0.0], color: [0.5, 0.0, 0.0, 0.5], tex_coords: [0.280, 0.949], mix_factor: 0.0 }, // bottm right
     Vertex { position: [-0.5, -0.5, 0.0], color: [0.5, 0.0, 0.0, 0.5], tex_coords: [0.859, 0.847], mix_factor: 0.0 }, // bottom left
 ];
 #[rustfmt::skip]
-const INDICES: &[u16] = &[
+pub const INDICES: &[u16] = &[
     0, 2, 1,
     0, 3, 2,
 ];
@@ -29,27 +30,36 @@ const INDICES: &[u16] = &[
 //     2, 3, 4,
 // ];
 
-// fn instances() -> Vec<Instance> {
-//     (0..5)
-//         .flat_map(|x| {
-//             (0..5).map(move |y| {
-//                 let position = cgmath::Vector3 {
-//                     x: x as f32,
-//                     y: y as f32,
-//                     z: 0.0,
-//                 };
-//                 let rotation = cgmath::Quaternion::one();
-//                 Instance { position, rotation }
-//             })
-//         })
-//         .collect()
-// }
-
-pub struct Triangle {
-    vertices: [Vertex; 3],
+pub fn quad() -> Mesh {
+    let mut vertices = Vec::new();
+    vertices.extend_from_slice(VERTICES);
+    let mut indices = Vec::new();
+    indices.extend_from_slice(INDICES);
+    Mesh { vertices, indices }
 }
 
-/// A collection of triangles.
+pub fn instances(x: u32, y: u32) -> Vec<Instance> {
+    (0..x)
+        .flat_map(|x| {
+            (0..y).map(move |y| {
+                let position = cgmath::Vector3 {
+                    x: x as f32,
+                    y: y as f32,
+                    z: 0.0,
+                };
+                let rotation = cgmath::Quaternion::one();
+                Instance { position, rotation }
+            })
+        })
+        .collect()
+}
+
+/// A collection of indexed vertices.
+pub struct Mesh {
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u16>,
+}
+/// A collection of primitives.
 pub struct Graphic {
-    triangles: Vec<Triangle>,
+    pub meshes: Vec<Mesh>,
 }

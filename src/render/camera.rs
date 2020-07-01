@@ -20,9 +20,6 @@ pub enum Projection {
         near: f32,
         far: f32,
     },
-    /// The following is required to make orthographic projection work.
-    /// far <= (2 * eye.z) - near
-    /// eye.z >= 0
     Orthographic {
         left: f32,
         right: f32,

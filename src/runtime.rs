@@ -7,6 +7,10 @@ pub fn run() {
     futures::executor::block_on(start());
 }
 
+/// Starts the application runtime taking over the executing thread on native platforms.
+///
+/// The runtime provides a simple method for running a graphical application,
+/// if you need more complex behaviour you should create your own.
 async fn start() {
     let event_loop = EventLoop::new();
     let gpu = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -23,17 +27,14 @@ async fn start() {
                 last_update_inst = time::Instant::now();
             }
         }
-        Event::WindowEvent {
-            event,
-            window_id: _,
-        } => {
-            for display in displays.as_mut_slice() {
-                display.send_event(&event, control_flow);
+        Event::WindowEvent { event, window_id } => {
+            for display in &mut displays[..] {
+                display.send_event(&event, window_id, control_flow);
             }
         }
-        Event::RedrawRequested(_) => {
-            for display in displays.as_mut_slice() {
-                display.draw();
+        Event::RedrawRequested(window_id) => {
+            for display in &mut displays[..] {
+                display.draw(window_id);
             }
         }
         _ => {}
