@@ -10,8 +10,8 @@ pub(crate) struct Renderer {
     queue: wgpu::Queue,
     layouts: Layouts,
     bindings: Bindings,
-    pipeline: Pipeline,
     buffers: Buffers,
+    pipeline: Pipeline,
 }
 struct Layouts {
     uniform_bind_group_layout: wgpu::BindGroupLayout,
@@ -19,7 +19,6 @@ struct Layouts {
     instance_bind_group_layout: wgpu::BindGroupLayout,
     pipeline_layout: wgpu::PipelineLayout,
 }
-
 struct Bindings {
     diffuse_bind_group: wgpu::BindGroup,
     uniform_bind_group: wgpu::BindGroup,
@@ -29,6 +28,11 @@ struct Pipeline {
     swap_chain_descriptor: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     render_pipeline: wgpu::RenderPipeline,
+}
+struct Buffers {
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 }
 
 impl Renderer {
@@ -41,18 +45,23 @@ impl Renderer {
     ) -> Self {
         let layouts = Layouts::new(&device);
         let bindings = Bindings::new(&device, &queue, &layouts);
-        let pipeline = Pipeline::new(&device, surface, &layouts, width, height);
         let buffers = Buffers::new(&device);
+        let pipeline = Pipeline::new(&device, surface, &layouts, width, height);
         Self {
             device,
             queue,
             layouts,
             bindings,
-            pipeline,
             buffers,
+            pipeline,
         }
     }
 
+    /// Draws a single frame to the swap chain then immediately presents it to the provided surface.
+    /// TODO:
+    /// Provide some control over the "render rate" vs "frame rate"
+    /// - render_frame => only renders the frame to prepare it for presentation, doesn't present
+    /// - present_frame => presents the next prepared swap chain frame
     pub fn draw_frame(
         &mut self,
         surface: &wgpu::Surface,
@@ -64,7 +73,6 @@ impl Renderer {
             .iter()
             .map(Instance::to_raw)
             .collect::<Vec<InstanceRaw>>();
-        // we'll need the size for later
         let instance_buffer_size =
             instance_data.len() * std::mem::size_of::<cgmath::Matrix4<f32>>();
         let instance_buffer = self.device.create_buffer_with_data(
@@ -254,17 +262,8 @@ impl Bindings {
             }],
             label: Some("uniform_bind_group"),
         });
-
-        let instance_data = Vec::new()
-            .iter()
-            .map(Instance::to_raw)
-            .collect::<Vec<InstanceRaw>>();
-
-        //TODO: dont create this empty instance buffer
-        let instance_buffer = device.create_buffer_with_data(
-            bytemuck::cast_slice(&instance_data),
-            wgpu::BufferUsage::STORAGE,
-        );
+        // TODO: dont create this empty instance buffer
+        let instance_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::STORAGE);
         let instance_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layouts.instance_bind_group_layout,
             bindings: &[wgpu::Binding {
@@ -273,7 +272,7 @@ impl Bindings {
             }],
             label: Some("instance_bind_group"),
         });
-        Bindings {
+        Self {
             diffuse_bind_group,
             uniform_bind_group,
             instance_bind_group,
@@ -339,23 +338,12 @@ impl Pipeline {
         }
     }
 }
-struct Buffers {
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    num_indices: u32,
-}
+
 impl Buffers {
     fn new(device: &wgpu::Device) -> Self {
-        let vertices = &Vec::<Vertex>::new()[..];
-        let indices = &Vec::<u16>::new()[..];
-
-        let vertex_buffer = device
-            .create_buffer_with_data(bytemuck::cast_slice(vertices), wgpu::BufferUsage::VERTEX);
-
-        let index_buffer =
-            device.create_buffer_with_data(bytemuck::cast_slice(indices), wgpu::BufferUsage::INDEX);
-
-        let num_indices = indices.len() as u32;
+        let vertex_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::VERTEX);
+        let index_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::INDEX);
+        let num_indices = 0 as u32;
         Self {
             vertex_buffer,
             index_buffer,
