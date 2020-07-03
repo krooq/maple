@@ -1,6 +1,12 @@
-use super::{instance::Instance, vertex::Vertex};
+use super::{
+    instance::Instance,
+    vertex::{Rgba, Vec3, Vertex},
+};
 use cgmath::prelude::*;
 
+// pub const QUAD_VERTEX_OFFSETS = &[
+//     [-0.5, 0.5, 0.0]
+// ];
 // square quad
 #[rustfmt::skip]
 pub const VERTICES: &[Vertex] = &[
@@ -10,7 +16,7 @@ pub const VERTICES: &[Vertex] = &[
     Vertex { position: [-0.5, -0.5, 0.0], color: [0.5, 0.0, 0.0, 0.5], tex_coords: [0.859, 0.847], mix_factor: 0.0 }, // bottom left
 ];
 #[rustfmt::skip]
-pub const INDICES: &[u16] = &[
+pub const QUAD_INDICES: &[u16] = &[
     0, 2, 1,
     0, 3, 2,
 ];
@@ -30,11 +36,14 @@ pub const INDICES: &[u16] = &[
 //     2, 3, 4,
 // ];
 
-pub fn quad() -> Mesh {
-    let mut vertices = Vec::new();
-    vertices.extend_from_slice(VERTICES);
-    let mut indices = Vec::new();
-    indices.extend_from_slice(INDICES);
+/// A Quad.
+pub fn quad(x: f32, y: f32, w: f32, h: f32) -> Mesh {
+    let l = x - w * 0.5;
+    let r = x + w * 0.5;
+    let t = y + h * 0.5;
+    let b = y - h * 0.5;
+    let vertices = vertices(&[[l, t, 0.0], [r, t, 0.0], [r, b, 0.0], [l, b, 0.0]]);
+    let indices = QUAD_INDICES.clone().into();
     Mesh { vertices, indices }
 }
 
@@ -59,7 +68,46 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u16>,
 }
+
+impl Mesh {
+    pub fn color(mut self, color: Rgba) -> Self {
+        for v in &mut self.vertices[..] {
+            v.color = color;
+        }
+        self
+    }
+}
 /// A collection of primitives.
 pub struct Graphic {
     pub meshes: Vec<Mesh>,
+}
+
+pub enum Coordinates {
+    /// Pixel coordinates relative to the top left corner of the target window.
+    /// x: left to right, [0, window.width]
+    /// y: top to bottom, [0, window.height]
+    /// z: near to far, [camera.projection.near, camera.projection.far]
+    Pixel(u32, u32, f32),
+    /// Normalized device coordinates relative to the centre of the window.
+    /// x: left to right, [-1.0, 1.0]
+    /// y: bottom to top, [-1.0, 1.0]
+    /// z: near to far, [camera.projection.near, camera.projection.far]
+    NormalizedDevice(f32, f32, f32),
+}
+
+pub enum Fill {
+    /// Flat RGBA color.
+    Color(u32, u32, u32, u32),
+    // Texture file.
+    // Texture(String),
+}
+
+fn vertices(positions: &[Vec3]) -> Vec<Vertex> {
+    positions
+        .iter()
+        .map(|position| Vertex {
+            position: *position,
+            ..Default::default()
+        })
+        .collect()
 }

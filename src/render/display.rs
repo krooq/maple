@@ -68,7 +68,7 @@ impl Display {
 
     pub fn draw(&mut self, window_id: winit::window::WindowId) {
         if window_id == self.window.id() {
-            let mesh = quad();
+            let mesh = quad(0.3, 0.3, 1.0, 1.0).color([1.0, 0.0, 0.0, 1.0]);
             let instances = instances(1, 1);
             self.renderer.draw_frame(
                 &self.surface,

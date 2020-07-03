@@ -24,15 +24,15 @@ struct Bindings {
     uniform_bind_group: wgpu::BindGroup,
     instance_bind_group: wgpu::BindGroup,
 }
-struct Pipeline {
-    swap_chain_descriptor: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
-    render_pipeline: wgpu::RenderPipeline,
-}
 struct Buffers {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
+}
+struct Pipeline {
+    swap_chain_descriptor: wgpu::SwapChainDescriptor,
+    swap_chain: wgpu::SwapChain,
+    render_pipeline: wgpu::RenderPipeline,
 }
 
 impl Renderer {
@@ -58,10 +58,12 @@ impl Renderer {
     }
 
     /// Draws a single frame to the swap chain then immediately presents it to the provided surface.
+    ///
     /// TODO:
     /// Provide some control over the "render rate" vs "frame rate"
-    /// - render_frame => only renders the frame to prepare it for presentation, doesn't present
-    /// - present_frame => presents the next prepared swap chain frame
+    /// e.g. I could introduce 2 new methods
+    /// - render_frame() => only renders the frame to prepare it for presentation, doesn't present
+    /// - present_frame() => presents the next prepared swap chain frame
     pub fn draw_frame(
         &mut self,
         surface: &wgpu::Surface,
