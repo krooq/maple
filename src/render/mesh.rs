@@ -1,8 +1,5 @@
-use super::{
-    instance::Instance,
-    vertex::{Rgba, Vec3, Vertex},
-};
-use cgmath::prelude::*;
+use super::types::*;
+use super::{instance::Instance, vertex::Vertex};
 
 // pub const QUAD_VERTEX_OFFSETS = &[
 //     [-0.5, 0.5, 0.0]
@@ -38,35 +35,44 @@ pub const QUAD_INDICES: &[u16] = &[
 
 /// A Quad.
 pub fn quad(x: f32, y: f32, w: f32, h: f32) -> Mesh {
-    let l = x - w * 0.5;
-    let r = x + w * 0.5;
-    let t = y + h * 0.5;
-    let b = y - h * 0.5;
+    let l = -w * 0.5;
+    let r = w * 0.5;
+    let t = h * 0.5;
+    let b = -h * 0.5;
     let vertices = vertices(&[[l, t, 0.0], [r, t, 0.0], [r, b, 0.0], [l, b, 0.0]]);
     let indices = QUAD_INDICES.clone().into();
-    Mesh { vertices, indices }
+    let instance = Instance {
+        position: [x, y, 0.0],
+        ..Default::default()
+    };
+    Mesh {
+        vertices,
+        indices,
+        instance,
+    }
 }
 
-pub fn instances(x: u32, y: u32) -> Vec<Instance> {
-    (0..x)
-        .flat_map(|x| {
-            (0..y).map(move |y| {
-                let position = cgmath::Vector3 {
-                    x: x as f32,
-                    y: y as f32,
-                    z: 0.0,
-                };
-                let rotation = cgmath::Quaternion::one();
-                Instance { position, rotation }
-            })
-        })
-        .collect()
-}
+// pub fn instances(x: u32, y: u32) -> Vec<Instance> {
+//     (0..x)
+//         .flat_map(|x| {
+//             (0..y).map(move |y| {
+//                 let position = cgmath::Vector3 {
+//                     x: x as f32,
+//                     y: y as f32,
+//                     z: 0.0,
+//                 };
+//                 let rotation = cgmath::Quaternion::one();
+//                 Instance { position, rotation }
+//             })
+//         })
+//         .collect()
+// }
 
 /// A collection of indexed vertices.
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u16>,
+    pub instance: Instance,
 }
 
 impl Mesh {

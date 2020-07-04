@@ -7,4 +7,6 @@ pub mod texture;
 pub mod uniform;
 pub mod vertex;
 
+pub mod math;
 pub mod mesh;
+pub mod types;

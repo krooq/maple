@@ -12,8 +12,8 @@ name = "maple"
 
 [dependencies]
 # graphics
-wgpu = { path = "../wgpu-rs", features = ["vulkan"]}
-image = "0.23.5"
+wgpu = { path = "../wgpu-rs", features = ["vulkan"] }
+image = "0.23.6"
 # windows
 winit = { version = "0.22.2" }
 raw-window-handle = "0.3.3"
@@ -23,10 +23,9 @@ futures = "0.3"
 log = "0.4.8"
 env_logger = "0.7.1"
 anyhow = "1.0.31"
-thiserror = "1.0.19"
+thiserror = "1.0.20"
 # math
-cgmath = "0.17.0"
-glam = "0.8.7"
+glam = "0.9.1"
 mint = "0.5.5"
 ultraviolet = "0.4.6"
 # data
@@ -35,3 +34,7 @@ bytemuck = "1.2.0"
 
 [build-dependencies]
 glsl-to-spirv = "0.1.7"
+
+[dependencies.cgmath]
+version = "0.17.0"
+features = ["mint"]

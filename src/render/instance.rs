@@ -1,24 +1,19 @@
+use super::math::*;
+use super::types::*;
+
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Instance {
-    pub position: cgmath::Vector3<f32>,
-    pub rotation: cgmath::Quaternion<f32>,
+    pub position: Vec3,
+    pub rotation: Quat,
 }
 
 impl Instance {
-    pub fn to_raw(&self) -> InstanceRaw {
-        InstanceRaw {
-            model: cgmath::Matrix4::from_translation(self.position)
-                * cgmath::Matrix4::from(self.rotation),
-        }
+    /// Converts the instance position and rotation into a 4x4 transform matrix.
+    pub fn to_matrix(&self) -> Mat4 {
+        (self.position.to_translation_matrix() * self.rotation.to_rotation_matrix()).into()
     }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct InstanceRaw {
-    model: cgmath::Matrix4<f32>,
-}
-
-unsafe impl bytemuck::Pod for InstanceRaw {}
-unsafe impl bytemuck::Zeroable for InstanceRaw {}
+unsafe impl bytemuck::Pod for Instance {}
+unsafe impl bytemuck::Zeroable for Instance {}

@@ -1,10 +1,5 @@
+use super::types::*;
 use std::mem;
-
-pub type Vec2 = [f32; 2];
-pub type Vec3 = [f32; 3];
-pub type Vec4 = [f32; 4];
-pub type Rgba = [f32; 4];
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Vertex {

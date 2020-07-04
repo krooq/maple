@@ -1,3 +1,5 @@
+use super::types::{Mat4, Vec3};
+
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
@@ -7,9 +9,9 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 );
 
 pub struct Camera {
-    pub eye: cgmath::Point3<f32>,
-    pub target: cgmath::Point3<f32>,
-    pub up: cgmath::Vector3<f32>,
+    pub eye: Vec3,
+    pub target: Vec3,
+    pub up: Vec3,
     pub projection: Projection,
 }
 
@@ -31,8 +33,8 @@ pub enum Projection {
 }
 
 impl Camera {
-    pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at(self.eye, self.target, self.up);
+    pub fn build_view_projection_matrix(&self) -> Mat4 {
+        let view = cgmath::Matrix4::look_at(self.eye.into(), self.target.into(), self.up.into());
         let proj = match self.projection {
             Projection::Perspective {
                 aspect,
@@ -49,6 +51,6 @@ impl Camera {
                 far,
             } => cgmath::ortho(left, right, bottom, top, near, far),
         };
-        return proj * view;
+        return (proj * view).into();
     }
 }

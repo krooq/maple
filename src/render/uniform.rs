@@ -1,16 +1,15 @@
-use super::camera::Camera;
-use cgmath::prelude::*;
+use super::{camera::Camera, math::Identity, types::Mat4};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Uniform {
-    view_proj: cgmath::Matrix4<f32>,
+    view_proj: Mat4,
 }
 
 impl Uniform {
     pub fn new() -> Self {
         Self {
-            view_proj: cgmath::Matrix4::identity(),
+            view_proj: Mat4::identity(),
         }
     }
 

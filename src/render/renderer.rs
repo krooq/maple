@@ -1,8 +1,8 @@
 use super::camera::Projection;
-use super::instance::{Instance, InstanceRaw};
+use super::instance::Instance;
 use super::texture::Texture;
 use super::uniform::Uniform;
-use super::vertex::Vertex;
+use super::{types::Mat4, vertex::Vertex};
 use crate::render::camera::Camera;
 
 pub(crate) struct Renderer {
@@ -73,10 +73,9 @@ impl Renderer {
     ) {
         let instance_data = instances
             .iter()
-            .map(Instance::to_raw)
-            .collect::<Vec<InstanceRaw>>();
-        let instance_buffer_size =
-            instance_data.len() * std::mem::size_of::<cgmath::Matrix4<f32>>();
+            .map(Instance::to_matrix)
+            .collect::<Vec<Mat4>>();
+        let instance_buffer_size = instance_data.len() * std::mem::size_of::<Mat4>();
         let instance_buffer = self.device.create_buffer_with_data(
             bytemuck::cast_slice(&instance_data),
             wgpu::BufferUsage::STORAGE,
@@ -237,9 +236,9 @@ impl Bindings {
         });
 
         let camera = Camera {
-            eye: (0.0, 0.0, 1.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
+            eye: [0.0, 0.0, 1.0],
+            target: [0.0, 0.0, 0.0],
+            up: [0.0, 1.0, 0.0],
             projection: Projection::Orthographic {
                 left: -1.0,
                 right: 1.0,
