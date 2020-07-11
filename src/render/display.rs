@@ -1,4 +1,8 @@
-use super::mesh::quad;
+use super::{
+    instance::Instance,
+    mesh::{Canvas, Graphic},
+    vertex::Vertex,
+};
 use crate::render::renderer::Renderer;
 use winit::dpi::PhysicalSize;
 use winit::{
@@ -66,14 +70,20 @@ impl Display {
         self.renderer.resize(size.width, size.height);
     }
 
-    pub fn draw(&mut self, window_id: winit::window::WindowId) {
+    pub fn draw(&mut self, window_id: winit::window::WindowId, graphics: Vec<Graphic>) {
         if window_id == self.window.id() {
-            let mesh = quad(0.3, 0.3, 1.0, 1.0).color([1.0, 0.0, 0.0, 1.0]);
+            let mut canvas = Canvas::new();
+            canvas.quad(0.3, 0.3, 0.5, 0.5).color([1.0, 0.0, 0.0, 1.0]);
+            canvas
+                .quad(-0.3, -0.3, 0.5, 0.5)
+                .color([0.0, 1.0, 0.0, 1.0]);
+            canvas.quad(0.3, -0.3, 0.5, 0.5).color([0.0, 0.0, 1.0, 1.0]);
+            dbg!(&canvas.indices);
             self.renderer.draw_frame(
                 &self.surface,
-                &mesh.vertices[..],
-                &mesh.indices[..],
-                &[mesh.instance],
+                canvas.vertices.as_slice(),
+                canvas.indices.as_slice(),
+                canvas.instances.as_slice(),
             );
         }
     }

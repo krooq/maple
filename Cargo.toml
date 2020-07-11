@@ -28,13 +28,12 @@ thiserror = "1.0.20"
 glam = "0.9.1"
 mint = "0.5.5"
 ultraviolet = "0.4.6"
+cgmath = { version="0.17.0", features = ["mint"] }
 # data
 zerocopy = "0.3.0"
 bytemuck = "1.2.0"
+# architecture
+legion = "0.2.4"
 
 [build-dependencies]
 glsl-to-spirv = "0.1.7"
-
-[dependencies.cgmath]
-version = "0.17.0"
-features = ["mint"]

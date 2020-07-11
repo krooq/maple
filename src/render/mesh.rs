@@ -17,75 +17,87 @@ pub const QUAD_INDICES: &[u16] = &[
     0, 2, 1,
     0, 3, 2,
 ];
-// pentagon
-// #[rustfmt::skip]
-// const VERTICES: &[Vertex] = &[
-//     Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
-//     Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
-//     Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
-//     Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
-//     Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], }, // E
-// ];
-// #[rustfmt::skip]
-// const INDICES: &[u16] = &[
-//     0, 1, 4,
-//     1, 2, 4,
-//     2, 3, 4,
-// ];
 
-/// A Quad.
-pub fn quad(x: f32, y: f32, w: f32, h: f32) -> Mesh {
+fn quad_vertices(w: f32, h: f32) -> Vec<Vertex> {
     let l = -w * 0.5;
     let r = w * 0.5;
     let t = h * 0.5;
     let b = -h * 0.5;
-    let vertices = vertices(&[[l, t, 0.0], [r, t, 0.0], [r, b, 0.0], [l, b, 0.0]]);
-    let indices = QUAD_INDICES.clone().into();
-    let instance = Instance {
-        position: [x, y, 0.0],
-        ..Default::default()
-    };
-    Mesh {
-        vertices,
-        indices,
-        instance,
-    }
+    vertices(&[[l, t, 0.0], [r, t, 0.0], [r, b, 0.0], [l, b, 0.0]])
 }
-
-// pub fn instances(x: u32, y: u32) -> Vec<Instance> {
-//     (0..x)
-//         .flat_map(|x| {
-//             (0..y).map(move |y| {
-//                 let position = cgmath::Vector3 {
-//                     x: x as f32,
-//                     y: y as f32,
-//                     z: 0.0,
-//                 };
-//                 let rotation = cgmath::Quaternion::one();
-//                 Instance { position, rotation }
-//             })
-//         })
-//         .collect()
-// }
+fn quad_indices(v0: usize) -> Vec<u16> {
+    let i0 = v0 as u16;
+    vec![i0, i0 + 2, i0 + 1, i0, i0 + 3, i0 + 2]
+}
 
 /// A collection of indexed vertices.
-pub struct Mesh {
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u16>,
-    pub instance: Instance,
+pub struct Mesh<'a> {
+    pub vertices: &'a mut [Vertex],
+    pub indices: &'a mut [u16],
+    pub instance: &'a mut Instance,
 }
 
-impl Mesh {
-    pub fn color(mut self, color: Rgba) -> Self {
+impl<'a> Mesh<'a> {
+    pub fn color(self, color: Rgba) -> Self {
         for v in &mut self.vertices[..] {
             v.color = color;
         }
         self
     }
 }
+
 /// A collection of primitives.
-pub struct Graphic {
-    pub meshes: Vec<Mesh>,
+pub struct Graphic<'a> {
+    pub meshes: Vec<&'a Mesh<'a>>,
+}
+
+pub struct Canvas {
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u16>,
+    pub instances: Vec<Instance>,
+}
+
+impl Canvas {
+    pub fn new() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            instances: Vec::new(),
+        }
+    }
+
+    pub fn quad<'a>(&mut self, x: f32, y: f32, w: f32, h: f32) -> Mesh {
+        let v0 = self.vertices.len();
+        let i0 = self.indices.len();
+        let inst = self.instances.len();
+        let v1 = v0 + 4;
+        let i1 = i0 + 6;
+
+        self.vertices.extend(quad_vertices(w, h));
+        self.indices.extend(quad_indices(v0));
+        self.instances.push(instance(x, y, 0.0));
+        Mesh {
+            vertices: &mut self.vertices[v0..v1],
+            indices: &mut self.indices[i0..i1],
+            instance: self.instances.get_mut(inst).unwrap(),
+        }
+    }
+}
+
+fn instance(x: f32, y: f32, z: f32) -> Instance {
+    Instance {
+        position: [x, y, z],
+        ..Default::default()
+    }
+}
+fn vertices(positions: &[Vec3]) -> Vec<Vertex> {
+    positions
+        .iter()
+        .map(|position| Vertex {
+            position: *position,
+            ..Default::default()
+        })
+        .collect()
 }
 
 pub enum Coordinates {
@@ -106,14 +118,4 @@ pub enum Fill {
     Color(u32, u32, u32, u32),
     // Texture file.
     // Texture(String),
-}
-
-fn vertices(positions: &[Vec3]) -> Vec<Vertex> {
-    positions
-        .iter()
-        .map(|position| Vertex {
-            position: *position,
-            ..Default::default()
-        })
-        .collect()
 }
