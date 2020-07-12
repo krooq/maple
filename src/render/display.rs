@@ -1,8 +1,4 @@
-use super::{
-    instance::Instance,
-    mesh::{Canvas, Graphic},
-    vertex::Vertex,
-};
+use super::mesh::Canvas;
 use crate::render::renderer::Renderer;
 use winit::dpi::PhysicalSize;
 use winit::{
@@ -70,20 +66,30 @@ impl Display {
         self.renderer.resize(size.width, size.height);
     }
 
-    pub fn draw(&mut self, window_id: winit::window::WindowId, graphics: Vec<Graphic>) {
+    pub fn draw(&mut self, window_id: winit::window::WindowId) {
         if window_id == self.window.id() {
             let mut canvas = Canvas::new();
-            canvas.quad(0.3, 0.3, 0.5, 0.5).color([1.0, 0.0, 0.0, 1.0]);
-            canvas
-                .quad(-0.3, -0.3, 0.5, 0.5)
-                .color([0.0, 1.0, 0.0, 1.0]);
-            canvas.quad(0.3, -0.3, 0.5, 0.5).color([0.0, 0.0, 1.0, 1.0]);
-            dbg!(&canvas.indices);
+            let m0 = canvas.quad(0.3, 0.3, 0.5, 0.5);
+            canvas.color(&m0, [0.0, 0.0, 1.0, 1.0]);
+            let m1 = canvas.quad(-0.3, 0.3, 0.5, 0.5);
+            canvas.color(&m1, [0.0, 1.0, 0.0, 1.0]);
+            let m2 = canvas.quad(-0.3, -0.3, 0.5, 0.5);
+            canvas.color(&m2, [0.0, 1.0, 1.0, 1.0]);
+            let m3 = canvas.quad(0.3, -0.3, 0.5, 0.5);
+            canvas.color(&m3, [1.0, 0.0, 0.0, 1.0]);
+
+            canvas.delete(&m2);
+            let m2 = canvas.quad(-0.3, -0.3, 0.5, 0.5);
+            canvas.color(&m2, [1.0, 0.0, 1.0, 1.0]);
+
+            let m4 = canvas.quad(0.0, 0.0, 0.5, 0.5);
+            canvas.color(&m4, [1.0, 1.0, 0.0, 1.0]);
+
             self.renderer.draw_frame(
                 &self.surface,
                 canvas.vertices.as_slice(),
                 canvas.indices.as_slice(),
-                canvas.instances.as_slice(),
+                canvas.transforms.as_slice(),
             );
         }
     }

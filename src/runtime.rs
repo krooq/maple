@@ -34,7 +34,7 @@ async fn start() {
         }
         Event::RedrawRequested(window_id) => {
             for display in &mut displays[..] {
-                display.draw(window_id, Vec::new());
+                display.draw(window_id);
             }
         }
         _ => {}

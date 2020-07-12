@@ -1,6 +1,6 @@
 use super::camera::Projection;
-use super::instance::Instance;
 use super::texture::Texture;
+use super::transform::Transform;
 use super::uniform::Uniform;
 use super::{types::Mat4, vertex::Vertex};
 use crate::render::camera::Camera;
@@ -16,18 +16,17 @@ pub(crate) struct Renderer {
 struct Layouts {
     uniform_bind_group_layout: wgpu::BindGroupLayout,
     diffuse_bind_group_layout: wgpu::BindGroupLayout,
-    instance_bind_group_layout: wgpu::BindGroupLayout,
+    transform_bind_group_layout: wgpu::BindGroupLayout,
     pipeline_layout: wgpu::PipelineLayout,
 }
 struct Bindings {
     diffuse_bind_group: wgpu::BindGroup,
     uniform_bind_group: wgpu::BindGroup,
-    instance_bind_group: wgpu::BindGroup,
+    transform_bind_group: wgpu::BindGroup,
 }
 struct Buffers {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    num_indices: u32,
 }
 struct Pipeline {
     swap_chain_descriptor: wgpu::SwapChainDescriptor,
@@ -68,30 +67,30 @@ impl Renderer {
         &mut self,
         surface: &wgpu::Surface,
         vertices: &[Vertex],
-        indices: &[u16],
-        instances: &[Instance],
+        indices: &[u32],
+        transforms: &[Transform],
     ) {
-        let instance_data = instances
+        let transform_data = transforms
             .iter()
-            .map(Instance::to_matrix)
+            .map(Transform::to_matrix)
             .collect::<Vec<Mat4>>();
-        let instance_buffer_size = instance_data.len() * std::mem::size_of::<Mat4>();
-        let instance_buffer = self.device.create_buffer_with_data(
-            bytemuck::cast_slice(&instance_data),
+        let transform_buffer_size = transform_data.len() * std::mem::size_of::<Mat4>();
+        let transform_buffer = self.device.create_buffer_with_data(
+            bytemuck::cast_slice(&transform_data),
             wgpu::BufferUsage::STORAGE,
         );
-        let instance_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.layouts.instance_bind_group_layout,
+        let transform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.layouts.transform_bind_group_layout,
             bindings: &[wgpu::Binding {
                 binding: 0,
                 resource: wgpu::BindingResource::Buffer(
-                    instance_buffer.slice(0..(instance_buffer_size as u64)),
+                    transform_buffer.slice(0..(transform_buffer_size as u64)),
                 ),
             }],
-            label: Some("instance_bind_group"),
+            label: Some("transform_bind_group"),
         });
 
-        self.bindings.instance_bind_group = instance_bind_group;
+        self.bindings.transform_bind_group = transform_bind_group;
 
         self.buffers.vertex_buffer = self
             .device
@@ -100,8 +99,6 @@ impl Renderer {
         self.buffers.index_buffer = self
             .device
             .create_buffer_with_data(bytemuck::cast_slice(indices), wgpu::BufferUsage::INDEX);
-
-        self.buffers.num_indices = indices.len() as u32;
 
         let frame = match self.pipeline.swap_chain.get_next_frame() {
             Ok(frame) => frame,
@@ -138,10 +135,10 @@ impl Renderer {
             render_pass.set_pipeline(&self.pipeline.render_pipeline);
             render_pass.set_bind_group(0, &self.bindings.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.bindings.uniform_bind_group, &[]);
-            render_pass.set_bind_group(2, &self.bindings.instance_bind_group, &[]);
+            render_pass.set_bind_group(2, &self.bindings.transform_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.buffers.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.buffers.index_buffer.slice(..));
-            render_pass.draw_indexed(0..self.buffers.num_indices, 0, 0..instances.len() as u32);
+            render_pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
         }
         self.queue.submit(Some(encoder.finish()));
     }
@@ -186,7 +183,7 @@ impl Layouts {
                 )],
                 label: Some("uniform_bind_group_layout"),
             });
-        let instance_bind_group_layout =
+        let transform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 bindings: &[wgpu::BindGroupLayoutEntry::new(
                     0,
@@ -197,19 +194,19 @@ impl Layouts {
                         readonly: false,
                     },
                 )],
-                label: Some("instance_bind_group_layout"),
+                label: Some("transform_bind_group_layout"),
             });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[
                 &diffuse_bind_group_layout,
                 &uniform_bind_group_layout,
-                &instance_bind_group_layout,
+                &transform_bind_group_layout,
             ],
         });
         Self {
             uniform_bind_group_layout,
             diffuse_bind_group_layout,
-            instance_bind_group_layout,
+            transform_bind_group_layout,
             pipeline_layout,
         }
     }
@@ -263,20 +260,20 @@ impl Bindings {
             }],
             label: Some("uniform_bind_group"),
         });
-        // TODO: dont create this empty instance buffer
-        let instance_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::STORAGE);
-        let instance_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &layouts.instance_bind_group_layout,
+        // TODO: dont create this empty transform buffer
+        let transform_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::STORAGE);
+        let transform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &layouts.transform_bind_group_layout,
             bindings: &[wgpu::Binding {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer(instance_buffer.slice(..)),
+                resource: wgpu::BindingResource::Buffer(transform_buffer.slice(..)),
             }],
-            label: Some("instance_bind_group"),
+            label: Some("transform_bind_group"),
         });
         Self {
             diffuse_bind_group,
             uniform_bind_group,
-            instance_bind_group,
+            transform_bind_group,
         }
     }
 }
@@ -324,7 +321,7 @@ impl Pipeline {
             }],
             depth_stencil_state: None,
             vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint16,
+                index_format: wgpu::IndexFormat::Uint32,
                 vertex_buffers: &[Vertex::desc()],
             },
             sample_count: 1,
@@ -344,11 +341,9 @@ impl Buffers {
     fn new(device: &wgpu::Device) -> Self {
         let vertex_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::VERTEX);
         let index_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::INDEX);
-        let num_indices = 0 as u32;
         Self {
             vertex_buffer,
             index_buffer,
-            num_indices,
         }
     }
 }
