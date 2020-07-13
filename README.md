@@ -19,21 +19,20 @@ But graphics are essential to any user facing program, even that terminal applic
 At a sort of high level, "usable" graphics programming can be split into several distinct tasks/abstractions
 (I straight up stole these ideas from the amazingly talented Lin Clark and adapted them for my own purposes, see this great article on the Firefox's rendering engine https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/)
 
-CPU
-|           |                                                                                |
-|-----------|--------------------------------------------------------------------------------|
-| Model     | build a data format containing all the graphic objects                         |
-| Parse     | turn that model into a usable data structure, usually a tree                   |
-| Style     | link some colour and image data to the graphic objects                         |
-| Layout    | apply some position and bounds rules to the graphic objects (this is optional) |
-| Tesselate | turn those graphic objects into triangles                                      |
 
-GPU
-|           |                                                                                       |
-|-----------|---------------------------------------------------------------------------------------|
-| Paint     | turn the triangles into colored pixels, aka Rasterize                                 |
-| Composite | smush together multiple "layers" that may have been created in Paint e.g. for opacity |
-| Render    | actually put stuff on the screen! aka Present                                         |
+| CPU          |                                                                                |
+|--------------|--------------------------------------------------------------------------------|
+| 1. Model     | build a data format containing all the graphic objects                         |
+| 2. Parse     | turn that model into a usable data structure, usually a tree                   |
+| 3. Style     | link some colour and image data to the graphic objects                         |
+| 4. Layout    | apply some position and bounds rules to the graphic objects (this is optional) |
+| 5. Tesselate | turn those graphic objects into triangles                                      |
+
+| GPU          |                                                                                       |
+|--------------|---------------------------------------------------------------------------------------|
+| 6. Paint     | turn the triangles into colored pixels, aka Rasterize                                 |
+| 7. Composite | smush together multiple "layers" that may have been created in Paint e.g. for opacity |
+| 8. Render    | actually put stuff on the screen! aka Present                                         |
 
 So *"rendering"* (or at least my definition of it) is actually just the GPU part. 
 This is all this project aims to provide but I'll also throw in some batteries to get you going.
