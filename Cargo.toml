@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Gavin Rossiter <rossiter.gavin@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
-description = "Simple cross platform renderer and ui toolkit."
+description = "Simple cross platform renderer."
 repository = "https://github.com/krooq/maple"
 
 [lib]
@@ -25,15 +25,11 @@ env_logger = "0.7.1"
 anyhow = "1.0.31"
 thiserror = "1.0.20"
 # math
-glam = "0.9.1"
-mint = "0.5.5"
-ultraviolet = "0.4.6"
-cgmath = { version="0.17.0", features = ["mint"] }
+# mint = "0.5.5"
+cgmath = "0.17.0"
 # data
-zerocopy = "0.3.0"
 bytemuck = "1.2.0"
-# architecture
-legion = "0.2.4"
+
 
 [build-dependencies]
 glsl-to-spirv = "0.1.7"

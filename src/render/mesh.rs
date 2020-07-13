@@ -1,5 +1,5 @@
-use super::types::*;
-use super::{transform::Transform, vertex::Vertex};
+use super::math::*;
+use std::mem;
 use std::ops::Range;
 
 fn quad_vertices(transform_index: u32, w: f32, h: f32) -> Vec<Vertex> {
@@ -99,22 +99,50 @@ fn vertices(transform_index: u32, positions: &[Vec3]) -> Vec<Vertex> {
         .collect()
 }
 
-pub enum Coordinates {
-    /// Pixel coordinates relative to the top left corner of the target window.
-    /// x: left to right, [0, window.width]
-    /// y: top to bottom, [0, window.height]
-    /// z: near to far, [camera.projection.near, camera.projection.far]
-    Pixel(u32, u32, f32),
-    /// Normalized device coordinates relative to the centre of the window.
-    /// x: left to right, [-1.0, 1.0]
-    /// y: bottom to top, [-1.0, 1.0]
-    /// z: near to far, [camera.projection.near, camera.projection.far]
-    NormalizedDevice(f32, f32, f32),
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Vertex {
+    /// Position of the vertex in local space.
+    pub position: Vec3,
+    /// Color of the vertex.
+    pub color: Vec4,
+    /// Texture coordinates of the vertex to map a texture onto a mesh.
+    pub tex_coords: Vec2,
+    /// Mix factor between color and texture.
+    /// 0.0 == color only
+    /// 1.0 == texture only
+    pub mix_factor: f32,
+    /// Index of the transform this vertex relates to.
+    /// This is used to lookup "per mesh" data stored in the transform storage buffer e.g. scale, translation and rotation.
+    pub transform_index: u32,
 }
 
-pub enum Fill {
-    /// Flat RGBA color.
-    Color(u32, u32, u32, u32),
-    // Texture file.
-    // Texture(String),
+impl Vertex {
+    pub fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
+        wgpu::VertexBufferDescriptor {
+            stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::InputStepMode::Vertex,
+            attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float4, 2 => Float2, 3 => Float, 4 => Uint],
+        }
+    }
 }
+
+unsafe impl bytemuck::Pod for Vertex {}
+unsafe impl bytemuck::Zeroable for Vertex {}
+
+#[repr(C)]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Transform {
+    pub translation: Vec3,
+    pub rotation: Quat,
+}
+
+impl Transform {
+    /// Converts the position and rotation into a 4x4 transform matrix.
+    pub fn to_matrix(&self) -> Mat4 {
+        (self.translation.to_translation_matrix() * self.rotation.to_rotation_matrix()).into()
+    }
+}
+
+unsafe impl bytemuck::Pod for Transform {}
+unsafe impl bytemuck::Zeroable for Transform {}

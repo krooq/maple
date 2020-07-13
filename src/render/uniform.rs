@@ -1,4 +1,5 @@
-use super::{camera::Camera, math::Identity, types::Mat4};
+use super::camera::Camera;
+use super::math::*;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

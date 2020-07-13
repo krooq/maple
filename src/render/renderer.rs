@@ -1,8 +1,9 @@
 use super::camera::Projection;
+use super::math::*;
+use super::mesh::Transform;
+use super::mesh::Vertex;
 use super::texture::Texture;
-use super::transform::Transform;
 use super::uniform::Uniform;
-use super::{types::Mat4, vertex::Vertex};
 use crate::render::camera::Camera;
 
 pub(crate) struct Renderer {
@@ -211,6 +212,7 @@ impl Layouts {
         }
     }
 }
+
 impl Bindings {
     fn new(device: &wgpu::Device, queue: &wgpu::Queue, layouts: &Layouts) -> Self {
         let diffuse_bytes = include_bytes!("../images/happy-tree.png");
