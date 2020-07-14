@@ -18,8 +18,8 @@ pub struct Display {
 
 /// [`Display`]: struct.Display.html
 impl Display {
-    pub async fn new<T: Into<String>>(
-        event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
+    pub async fn new<E, T: Into<String>>(
+        event_loop: &winit::event_loop::EventLoopWindowTarget<E>,
         instance: &wgpu::Instance,
         title: T,
     ) -> Self {
