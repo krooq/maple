@@ -82,7 +82,7 @@ impl Renderer {
         );
         let transform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.layouts.transform_bind_group_layout,
-            bindings: &[wgpu::Binding {
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::Buffer(
                     transform_buffer.slice(0..(transform_buffer_size as u64)),
@@ -154,7 +154,7 @@ impl Layouts {
     fn new(device: &wgpu::Device) -> Self {
         let diffuse_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[
+                entries: &[
                     wgpu::BindGroupLayoutEntry::new(
                         0,
                         wgpu::ShaderStage::FRAGMENT,
@@ -174,7 +174,7 @@ impl Layouts {
             });
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[wgpu::BindGroupLayoutEntry::new(
+                entries: &[wgpu::BindGroupLayoutEntry::new(
                     0,
                     wgpu::ShaderStage::VERTEX,
                     wgpu::BindingType::UniformBuffer {
@@ -186,7 +186,7 @@ impl Layouts {
             });
         let transform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[wgpu::BindGroupLayoutEntry::new(
+                entries: &[wgpu::BindGroupLayoutEntry::new(
                     0,
                     wgpu::ShaderStage::VERTEX,
                     wgpu::BindingType::StorageBuffer {
@@ -203,6 +203,7 @@ impl Layouts {
                 &uniform_bind_group_layout,
                 &transform_bind_group_layout,
             ],
+            push_constant_ranges: &[],
         });
         Self {
             uniform_bind_group_layout,
@@ -221,12 +222,12 @@ impl Bindings {
 
         let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layouts.diffuse_bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
+            entries: &[
+                wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
                 },
-                wgpu::Binding {
+                wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
                 },
@@ -256,7 +257,7 @@ impl Bindings {
 
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layouts.uniform_bind_group_layout,
-            bindings: &[wgpu::Binding {
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
             }],
@@ -266,7 +267,7 @@ impl Bindings {
         let transform_buffer = device.create_buffer_with_data(&[], wgpu::BufferUsage::STORAGE);
         let transform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layouts.transform_bind_group_layout,
-            bindings: &[wgpu::Binding {
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::Buffer(transform_buffer.slice(..)),
             }],

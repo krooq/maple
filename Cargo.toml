@@ -30,6 +30,7 @@ cgmath = "0.17.0"
 # data
 bytemuck = "1.2.0"
 
+rand = "0.7.3"
 
 [build-dependencies]
 glsl-to-spirv = "0.1.7"

@@ -13,6 +13,7 @@ pub struct Display {
     window: winit::window::Window,
     surface: wgpu::Surface,
     renderer: Renderer,
+    pub canvas: Canvas,
 }
 
 /// [`Display`]: struct.Display.html
@@ -30,13 +31,10 @@ impl Display {
 
         let surface = unsafe { instance.create_surface(&window) };
         let adapter = instance
-            .request_adapter(
-                &wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::Default,
-                    compatible_surface: Some(&surface),
-                },
-                wgpu::UnsafeFeatures::disallow(),
-            )
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::Default,
+                compatible_surface: Some(&surface),
+            })
             .await
             .unwrap();
 
@@ -54,10 +52,13 @@ impl Display {
 
         let renderer = Renderer::new(&surface, device, queue, size.width, size.height);
 
+        let canvas = Canvas::new();
+
         Self {
             window,
             surface,
             renderer,
+            canvas,
         }
     }
 
@@ -68,28 +69,11 @@ impl Display {
 
     pub fn draw(&mut self, window_id: winit::window::WindowId) {
         if window_id == self.window.id() {
-            let mut canvas = Canvas::new();
-            let m0 = canvas.quad(0.3, 0.3, 0.5, 0.5);
-            canvas.color(&m0, [0.0, 0.0, 1.0, 1.0]);
-            let m1 = canvas.quad(-0.3, 0.3, 0.5, 0.5);
-            canvas.color(&m1, [0.0, 1.0, 0.0, 1.0]);
-            let m2 = canvas.quad(-0.3, -0.3, 0.5, 0.5);
-            canvas.color(&m2, [0.0, 1.0, 1.0, 1.0]);
-            let m3 = canvas.quad(0.3, -0.3, 0.5, 0.5);
-            canvas.color(&m3, [1.0, 0.0, 0.0, 1.0]);
-
-            canvas.delete(&m2);
-            let m2 = canvas.quad(-0.3, -0.3, 0.5, 0.5);
-            canvas.color(&m2, [1.0, 0.0, 1.0, 1.0]);
-
-            let m4 = canvas.quad(0.0, 0.0, 0.5, 0.5);
-            canvas.color(&m4, [1.0, 1.0, 0.0, 1.0]);
-
             self.renderer.draw_frame(
                 &self.surface,
-                canvas.vertices.as_slice(),
-                canvas.indices.as_slice(),
-                canvas.transforms.as_slice(),
+                self.canvas.vertices.as_slice(),
+                self.canvas.indices.as_slice(),
+                self.canvas.transforms.as_slice(),
             );
         }
     }
